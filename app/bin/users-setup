@@ -1,0 +1,14 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# usage: users-setup CONFIG.json  -> root password database, and /etc/httpd.conf for the web page
+A=${APPDIR:-/app}; export PATH=$A/bin:$A/sbin:/bin:/sbin:/usr/bin:/usr/sbin
+CFG=${1:-/tmp/camera.json}
+PW=$(jget $CFG users.root_password "")
+echo 'root:x:0:0:root:/root:/bin/sh' > /etc/passwd
+echo 'root:*:0:0:99999:7:::' > /etc/shadow; chmod 600 /etc/shadow
+if [ -n "$PW" ]; then echo "root:$PW" | chpasswd; echo "/:root:$PW" > /etc/httpd.conf   # web page asks for the password
+else : > /etc/httpd.conf; echo "no password set: setup mode (web page open, RTSP closed)"; fi
+chmod 600 /etc/httpd.conf
+echo ".mp4:video/mp4" >> /etc/httpd.conf
+if [ -n "$PW" ] && [ -d /tmp/www ]; then ln -sfn /mnt/sd /tmp/www/rec; else rm -f /tmp/www/rec; fi   # recordings are only served behind the password
+chmod 600 /etc/httpd.conf

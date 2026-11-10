@@ -1,0 +1,20 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# cv206 init: mount the app image (flash `app` partition, or an SD-card development override) and start /app/etc/rc
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+mount -t proc proc /proc; mount -t sysfs sysfs /sys; mount -t devtmpfs devtmpfs /dev
+mkdir -p /tmp /var/run /app /mnt/sd /data
+mount -t tmpfs tmpfs /tmp
+dmesg -n 1
+echo "cv206 init: kernel $(uname -r)"
+# the app image: a development image on the SD card (cv206/app.sqsh) wins if it mounts; otherwise (no card, no file, or a broken file) the flash one is used
+OK=0
+for i in 1 2 3 4 5 6 7 8; do [ -b /dev/mmcblk0p1 ] && break; sleep 0.5; done
+if [ -b /dev/mmcblk0p1 ] && mount -o ro /dev/mmcblk0p1 /mnt/sd 2>/dev/null && [ -f /mnt/sd/cv206/app.sqsh ]; then
+    if mount -t squashfs -o ro,loop /mnt/sd/cv206/app.sqsh /app 2>/dev/null; then OK=1; echo "cv206 init: development app image from the SD card"
+    else echo "cv206 init: SD card image is broken, using the flash image"; fi
+fi
+if [ $OK = 0 ]; then mount -t squashfs -o ro /dev/mtdblock5 /app 2>/dev/null && OK=1; fi
+if [ $OK = 1 ]; then [ -x /app/etc/rc ] && /app/etc/rc &
+else echo "cv206 init: cannot mount any app image; UART shell only"; fi
+while true; do /bin/sh; sleep 1; done

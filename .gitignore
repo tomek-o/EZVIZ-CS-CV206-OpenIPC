@@ -1,0 +1,54 @@
+# private or device-specific data
+/dump/
+/logs/
+/.hotspot.private
+/local.env
+/NOTES.md
+
+# private extractions, scratch files and images of the stock firmware
+/analysis/
+
+# built files (see tools/build-helpers.sh, tools/kbuild.sh, kernel/initramfs/prepare.sh)
+/app/bin/jget
+/app/bin/jcfg
+/app/bin/httpget
+/app/bin/addentropy
+/app/bin/acodecctl
+/app/bin/i2cwr
+/app/bin/i2cprobe
+/app/sbin/
+/app/lib/
+/app/usr/share/udhcpc/default.script
+/app/etc/ssl/
+/build/
+/_release/
+*.arm
+
+# pictures, video, logs, transfer leftovers
+*.jpg
+*.jpeg
+*.png
+*.mp4
+*.log
+*.sz
+*.sx
+
+# Python caches
+__pycache__/
+*.pyc
+
+# firmware images, flash dumps and archives
+*.bin
+*.img
+*.uImage
+*.sqsh
+*.tar
+*.tar.gz
+*.tar.xz
+*.tar.bz2
+*.zip
+
+# keys and credentials
+*.private
+*.pem
+*.key

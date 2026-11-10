@@ -1,0 +1,13 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Set the clock from the NTP server(s) in the settings (ntp_server: one or more, comma separated, empty = off). The camera has no battery-backed clock: it starts in 1970.
+# Tries every 30 s until it works (needs an address and DNS from the Wi-Fi network), then every 6 hours.
+while true; do
+  S=$(jget /tmp/camera.json ntp_server "")
+  W=30
+  if [ -n "$S" ] && ifconfig mlan0 2>/dev/null | grep -q "inet addr"; then
+    A=""; OLDIFS=$IFS; IFS=,; for h in $S; do A="$A -p $h"; done; IFS=$OLDIFS    # several servers: comma separated
+    if timeout 40 ntpd -q -n $A >/tmp/ntp.log 2>&1 && [ "$(date +%Y)" -ge 2024 ]; then touch /tmp/ntp.ok; W=21600; else rm -f /tmp/ntp.ok; fi
+  fi
+  sleep $W
+done

@@ -1,0 +1,26 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# microSD card: mount a FAT32 card at /mnt/sd when it appears (the early boot script may already have mounted it read-only here; rc puts a read-only guard on the directory otherwise), unmount when it disappears.
+# Read-only unless recording is switched on (a dirty or foreign card is never written to by accident); remounted read-write when recording is enabled.
+# Every change restarts the streamer (when recording is on) so that its recorder starts or stops. The card is asked to rescan every 10 s (no card-detect interrupt).
+M=/mnt/sd; N=0
+mounted() { grep -q " $M vfat" /proc/mounts; }
+want() { [ "$(jget /tmp/camera.json recording.enabled false)" = true ] && echo rw || echo ro; }
+restart() { [ "$(jget /tmp/camera.json recording.enabled false)" = true ] && killall majestic 2>/dev/null; }
+while true; do
+  D=""; [ -b /dev/mmcblk0p1 ] && D=/dev/mmcblk0p1; [ -z "$D" ] && [ -b /dev/mmcblk0 ] && D=/dev/mmcblk0
+  if [ -n "$D" ]; then
+    if ! mounted && [ ! -e /tmp/sd.ejected ]; then
+      W=$(want)
+      if mount -t vfat -o noatime,utf8,$W $D $M 2>/tmp/sd.err; then echo "sd card mounted ($D, $W)"; restart; else echo "sd card mount failed: $(cat /tmp/sd.err)"; fi
+    elif mounted && [ ! -e /tmp/sd.ejected ]; then
+      W=$(want); C=$(awk -v m=$M '$2==m && $3=="vfat" {split($4, o, ","); print o[1]}' /proc/mounts)
+      if [ "$W" != "$C" ]; then mount -o remount,$W $M && { echo "sd card remounted $W"; restart; }; fi
+    fi
+  else
+    rm -f /tmp/sd.ejected
+    if mounted; then umount -l $M; mount -t tmpfs -o size=4k,ro tmpfs $M; echo "sd card removed"; restart; fi
+  fi
+  N=$((N + 1)); [ $((N % 2)) = 0 ] && echo 1 > /sys/class/mmc_host/mmc0/rescan 2>/dev/null
+  sleep 5
+done

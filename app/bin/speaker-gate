@@ -1,0 +1,16 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Keep the codec's output stage (DAC) muted while nothing plays: unmuted and idle it hisses. majestic powers the speaker amplifier (GPIO 54) only
+# while it plays a sound (+ speakerPinHoldMs), so: amplifier on -> unmute, amplifier off -> mute. Polls the pin 10 times a second.
+F=/sys/class/gpio/gpio54/value
+S=mute; N=0
+acodecctl dacmute 1 >/dev/null
+while true; do
+  [ -e $F ] && read V < $F || V=0
+  if [ "$V" = 1 ]; then W=unmute; else W=mute; fi
+  if [ "$W" != "$S" ] || [ $N -ge 100 ]; then
+    [ "$W" = unmute ] && acodecctl dacmute 0 >/dev/null || acodecctl dacmute 1 >/dev/null
+    S=$W; N=0
+  fi
+  N=$((N + 1)); sleep 0.1
+done

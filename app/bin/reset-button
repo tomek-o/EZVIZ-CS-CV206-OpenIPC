@@ -1,0 +1,27 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Reset button (GPIO 40, active low). Held >= 1 s: the blue LED blinks slowly (the press is registered); held 5 s: fast blinking, three beeps,
+# then the saved settings are deleted (back to defaults, setup access point when no network is in the defaults) and the camera reboots. Released earlier: nothing.
+G=/sys/class/gpio/gpio40
+echo 40 > /sys/class/gpio/export 2>/dev/null; echo in > $G/direction
+led blue off; led other off
+T=0
+while true; do
+  if [ "$(cat $G/value)" = 0 ]; then
+    T=$((T + 1))
+    if [ $T -ge 20 ]; then
+      echo "reset button held: factory settings"
+      touch /tmp/led.busy
+      beep reset &
+      for i in 1 2 3 4 5 6 7 8 9 10; do led blue on; led other on; sleep 0.12; led blue off; led other off; sleep 0.12; done
+      rm -f /data/camera.json /data/camera.json.bak /data/camera.json.next; sync; reboot; sleep 60
+    elif [ $T -ge 4 ]; then
+      touch /tmp/led.busy
+      [ $((T % 2)) = 0 ] && led blue on || led blue off
+    fi
+  else
+    [ $T -ge 4 ] && { led blue off; rm -f /tmp/led.busy; }
+    T=0
+  fi
+  sleep 0.25
+done

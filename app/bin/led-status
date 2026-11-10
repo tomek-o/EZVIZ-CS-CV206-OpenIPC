@@ -1,0 +1,17 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Status LED (blue, GPIO 53, active low): connected = short double flash every 2 s; access point / setup = 1 Hz blink; station without a network = fast blink.
+# The reset button takes the LED over while it is pressed (/tmp/led.busy).
+F=/sys/class/gpio/gpio53/value
+[ -e $F ] || { echo 53 > /sys/class/gpio/export 2>/dev/null; echo out > /sys/class/gpio/gpio53/direction; }
+on() { echo 0 > $F; }; off() { echo 1 > $F; }
+off
+while true; do
+  [ -e /tmp/led.busy ] && { sleep 0.25; continue; }
+  A=$(ifconfig mlan0 2>/dev/null | sed -n 's/.*inet addr:\([0-9.]*\).*/\1/p')
+  case "$A" in
+    192.168.4.1) on; sleep 0.5; off; sleep 0.5;;
+    "") on; sleep 0.1; off; sleep 0.1; on; sleep 0.1; off; sleep 0.1;;
+    *) on; sleep 0.1; off; sleep 0.2; on; sleep 0.1; off; sleep 1.6;;
+  esac
+done

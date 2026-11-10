@@ -1,0 +1,6 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# led blue|other on|off  (status LEDs: GPIO 53 = blue, GPIO 55 = second LED, both active low)
+case "$1" in blue) G=53;; other) G=55;; *) exit 2;; esac
+[ -d /sys/class/gpio/gpio$G ] || { echo $G > /sys/class/gpio/export 2>/dev/null; echo out > /sys/class/gpio/gpio$G/direction; }
+[ "$2" = on ] && echo 0 > /sys/class/gpio/gpio$G/value || echo 1 > /sys/class/gpio/gpio$G/value

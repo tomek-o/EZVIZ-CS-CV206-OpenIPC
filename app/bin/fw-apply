@@ -1,0 +1,41 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Flash /tmp/fw.new into an MTD partition and reboot. Runs from RAM (copied to /tmp by the CGI); uses only initramfs applets.
+# usage: fw-apply.sh app|sys MTDNUM SHA256 SIZE
+KIND=$1; MTD=$2; SHA=$3; SIZE=$4
+cd /                                                      # the web server runs CGIs in /app/www: this script must not keep /app busy itself
+LOG=/tmp/update.log; exec >>$LOG 2>&1
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+echo "== update $KIND -> /dev/mtd$MTD ($SIZE bytes) $(date)"
+sleep 2                                                   # let the web server finish answering
+note() { echo "$(date +%F_%T) $KIND $1" > /data/last-update 2>/dev/null; }
+holders() {   # PIDs of processes that use /app: working directory, executable, mapped libraries or open files
+    for p in /proc/[0-9]*; do
+        n=${p#/proc/}; [ "$n" = "$$" ] && continue; [ "$n" = 1 ] && continue
+        c=$(readlink $p/cwd); e=$(readlink $p/exe)
+        case "$c $e" in */app*) echo $n; continue;; esac
+        grep -q "/app/" $p/maps 2>/dev/null && { echo $n; continue; }
+        ls -l $p/fd 2>/dev/null | grep -q "/app/" && echo $n
+    done
+}
+if [ "$KIND" = "app" ]; then
+    # the running system lives on this partition: stop everything that uses /app (repeatedly: supervisors respawn), then unmount it
+    DONE=0
+    for i in 1 2 3 4 5 6 7 8; do
+        for p in $(holders); do echo "killing $p ($(cat /proc/$p/comm 2>/dev/null))"; kill -9 $p 2>/dev/null; done
+        sleep 1
+        if umount /app 2>/dev/null; then DONE=1; break; fi
+    done
+    if [ $DONE = 0 ]; then echo "cannot unmount /app, still held by: $(holders | tr '\n' ' ')"; note "FAILED: /app busy"; sync; reboot -f; exit 1; fi
+    echo "/app unmounted"
+fi
+[ "$(sha256sum /tmp/fw.new | cut -d' ' -f1)" = "$SHA" ] || { echo "RAM copy changed: not flashing"; note "FAILED: ram copy"; sync; reboot -f; exit 1; }
+if flashcp -v /tmp/fw.new /dev/mtd$MTD; then
+    echo "flashcp ok"
+    # read back and compare the hash of exactly SIZE bytes
+    BACK=$(head -c $SIZE /dev/mtd$MTD | sha256sum | cut -d' ' -f1)
+    if [ "$BACK" = "$SHA" ]; then echo "verified"; note "ok sha256=$SHA"; else echo "VERIFY FAILED ($BACK)"; note "FAILED: verify"; fi
+else
+    echo "flashcp FAILED"; note "FAILED: flashcp"
+fi
+sync; sleep 1; reboot -f

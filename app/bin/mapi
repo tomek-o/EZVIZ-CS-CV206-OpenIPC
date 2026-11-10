@@ -1,0 +1,6 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# call a majestic HTTP API path on the internal port (login from the effective settings): mapi /night/status
+A=${APPDIR:-/app}; export PATH=$A/bin:/bin:/sbin:/usr/bin:/usr/sbin
+PW=$(jget /tmp/camera.json users.root_password "")
+httpget 127.0.0.1 8080 "$1" root "$PW"

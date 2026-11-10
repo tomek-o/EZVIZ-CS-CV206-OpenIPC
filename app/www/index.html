@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ezviz CS-CV206</title>
+<style>
+  :root { --bg:#f4f5f7; --card:#fff; --text:#1d2330; --muted:#5d6678; --line:#d9dde5; --accent:#1f6feb; --ok:#1a7f37; --bad:#c62828; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14171d; --card:#1d222b; --text:#e6e9ef; --muted:#9aa3b5; --line:#303744; --accent:#5aa2ff; --ok:#3fb950; --bad:#ff6b6b; } }
+  * { box-sizing: border-box; }
+  [hidden] { display:none !important; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 system-ui, sans-serif; }
+  header { display:flex; align-items:center; gap:.6rem; padding:.8rem 1rem; background:var(--card); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:1; }
+  header h1 { font-size:1.05rem; margin:0; }
+  header #sub { flex:1; }
+  .dot { width:.7rem; height:.7rem; border-radius:50%; background:var(--muted); }
+  .dot.ok { background:var(--ok); } .dot.bad { background:var(--bad); }
+  .layout { display:grid; grid-template-columns:13.5rem minmax(0, 1fr); max-width:64rem; margin:0 auto; }
+  nav { padding:1rem 0 1rem 1rem; position:sticky; top:3.1rem; align-self:start; font-size:.92rem; }
+  nav .grp { margin:.9rem 0 .2rem .6rem; font-size:.72rem; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); cursor:default; } nav .grp:first-child { margin-top:0; }
+  nav a { display:block; padding:.35rem .6rem .35rem 1.2rem; border-radius:.4rem; color:var(--text); text-decoration:none; } nav a:hover { background:var(--card); } nav a.on { background:var(--accent); color:#fff; }
+  main { padding:1rem; min-width:0; } main > .panel, main > #actions { margin-bottom:1rem; }
+  .panel { display:none; } .panel.on { display:block; }
+  #actions { position:sticky; bottom:0; }
+  @media (max-width:42rem) { .layout { grid-template-columns:minmax(0, 1fr); } nav { position:static; padding:.6rem 1rem 0; display:flex; flex-wrap:wrap; gap:.3rem; } nav .grp { display:none; } nav a { padding:.35rem .6rem; border:1px solid var(--line); } }
+  section { background:var(--card); border:1px solid var(--line); border-radius:.6rem; padding:1rem; }
+  section.wide { grid-column:1 / -1; }
+  h2 { font-size:.95rem; margin:0 0 .7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  label { display:block; margin:.55rem 0 .15rem; font-size:.85rem; color:var(--muted); }
+  input[type=text], input[type=password], input[type=number], select { width:100%; padding:.45rem .55rem; border:1px solid var(--line); border-radius:.4rem; background:var(--bg); color:var(--text); font:inherit; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; }
+  .check { display:flex; align-items:center; gap:.5rem; margin:.5rem 0; color:var(--text); font-size:.95rem; }
+  button { padding:.5rem .9rem; border:1px solid var(--line); border-radius:.4rem; background:var(--card); color:var(--text); font:inherit; cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.danger { color:var(--bad); }
+  .bar { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.8rem; align-items:center; }
+  #live { width:100%; aspect-ratio:16/9; background:#000; border-radius:.4rem; object-fit:contain; display:block; }
+  table { width:100%; border-collapse:collapse; font-size:.9rem; } td { padding:.2rem 0; border-bottom:1px solid var(--line); } td:first-child { color:var(--muted); width:42%; }
+  .net { display:grid; grid-template-columns:1fr 1fr auto; gap:.4rem; margin:.4rem 0; }
+  #msg { margin-top:.6rem; min-height:1.3rem; font-size:.9rem; } .ok-t { color:var(--ok); } .bad-t { color:var(--bad); }
+  .warn { background:#fff3cd; color:#5c4400; border-bottom:1px solid #e0c870; padding:.6rem 1rem; text-align:center; } .warn a { color:inherit; font-weight:600; }
+  @media (prefers-color-scheme: dark) { .warn { background:#4a3a00; color:#ffe9a0; border-color:#7a6320; } }
+  .panel > section + section { margin-top:1rem; }
+  .addr { display:grid; grid-template-columns:5.5rem minmax(0, 1fr) auto; gap:.4rem; align-items:center; margin:.4rem 0; } .addr span { color:var(--muted); font-size:.85rem; }
+  .addr input { font:inherit; font-family:ui-monospace, monospace; font-size:.95rem; padding:.45rem .55rem; border:1px solid var(--line); border-radius:.4rem; background:var(--bg); color:var(--text); width:100%; }
+  .hint { font-size:.8rem; color:var(--muted); margin:.3rem 0 0; }
+  ul.scan { list-style:none; padding:0; margin:.5rem 0 0; } ul.scan li { padding:.3rem .1rem; border-bottom:1px solid var(--line); cursor:pointer; display:flex; justify-content:space-between; }
+</style>
+</head>
+<body>
+<header><span id="dot" class="dot"></span><h1 id="title">Camera</h1><span id="sub" class="hint"></span><span id="up" class="hint"></span></header>
+<div id="nopw" class="warn" hidden><b>No password is set.</b> Anyone on this network can open this page and change the camera, and the video stream stays closed. <a href="#p-device">Set a password</a></div>
+<div class="layout">
+<nav>
+  <div class="grp">Monitor</div><a href="#p-live">Live picture</a><a href="#p-status">Status</a>
+  <div class="grp">Video</div><a href="#p-stream">Stream</a><a href="#p-night">Day / night</a><a href="#p-osd">On-screen display</a>
+  <div class="grp">Recording</div><a href="#p-rec">Card and recordings</a>
+  <div class="grp">Audio</div><a href="#p-audio">Microphone and speaker</a>
+  <div class="grp">Network</div><a href="#p-wifi">Wi-Fi</a><a href="#p-ip">IP address</a><a href="#p-sip">SIP intercom</a>
+  <div class="grp">System</div><a href="#p-device">Device and security</a><a href="#p-fw">Firmware update</a><a href="#p-diag">Diagnostics</a>
+</nav>
+<main>
+  <div class="panel" id="p-live"><section><h2>Live picture</h2><img id="live" alt="snapshot"><div class="bar"><button id="snap">Refresh picture</button><label for="mode" style="margin:0">Update</label><select id="mode" style="width:auto" autocomplete="off"><option value="0">on click only</option><option value="1" selected>snapshot every 1 s</option><option value="3">snapshot every 3 s</option><option value="10">snapshot every 10 s</option><option value="30">snapshot every 30 s</option><option value="live">live video (MJPEG)</option></select></div></section>
+  <section><h2>Addresses</h2><div id="addr"></div><p class="hint">Replace <code>PASSWORD</code> with the camera password (user <code>root</code>). Some players ask for the login separately; characters such as <code>@</code> or <code>/</code> in the password must be written as <code>%40</code>, <code>%2F</code>.</p></section></div>
+
+  <section class="panel" id="p-status"><h2>Status</h2>
+    <table id="stat"></table>
+  </section>
+
+  <section class="panel" id="p-stream"><h2>Video</h2>
+    <label for="size">Resolution</label>
+    <select id="size"><option value="1920x1080">1920 × 1080 (1080p)</option><option value="1280x720">1280 × 720 (720p)</option><option value="960x540">960 × 540 (qHD)</option><option value="640x360">640 × 360 (nHD)</option><option value="320x180">320 × 180</option></select>
+    <div class="row"><div><label for="fps">Frames per second</label>
+    <select id="fps"><option>30</option><option>25</option><option>20</option><option>15</option><option>12</option><option>10</option><option>8</option><option>5</option><option>2</option><option>1</option></select></div>
+    <div><label for="bitrate">Bitrate</label>
+    <select id="bitrate"><option value="512">512 kbit/s</option><option value="1024">1 Mbit/s</option><option value="2048">2 Mbit/s</option><option value="3072">3 Mbit/s</option><option value="4096">4 Mbit/s</option><option value="6144">6 Mbit/s</option></select></div></div>
+    <div class="check"><input type="checkbox" id="mirror"><label for="mirror" style="margin:0;color:inherit;font-size:inherit">Mirror image</label></div>
+    <div class="check"><input type="checkbox" id="flip"><label for="flip" style="margin:0;color:inherit;font-size:inherit">Flip image (upside down)</label></div>
+    <p class="hint">The sensor runs at 15 frames per second; smaller pictures need less bandwidth and processing.</p>
+  </section>
+
+  <section class="panel" id="p-night"><h2>Day / night</h2>
+    <label for="nmode">Mode</label>
+    <select id="nmode" autocomplete="off"><option value="auto">Automatic (by the picture)</option><option value="day">Always day</option><option value="night">Always night</option></select>
+    <label for="ngain">Night sensitivity (switch when the sensor needs this gain)</label>
+    <select id="ngain" autocomplete="off"><option value="2">2× (switch early)</option><option value="4">4×</option><option value="6">6×</option><option value="8">8× (only when very dark)</option></select>
+    <label for="nlight">Infrared lamp</label>
+    <select id="nlight" autocomplete="off"><option value="auto">on at night</option><option value="never">never on</option></select>
+    <div class="check"><input type="checkbox" id="ngray"><label for="ngray" style="margin:0;color:inherit;font-size:inherit">Grayscale picture at night</label></div>
+    <div class="bar" id="nowbar" hidden><button id="nnight">Night now</button><button id="nday">Day now</button></div>
+    <p class="hint" id="nstate"></p>
+  </section>
+
+  <section class="panel" id="p-osd"><h2>On-screen display</h2>
+    <label><input type="checkbox" id="osd"> Show text on the video</label>
+    <label for="osdtext">Text (strftime codes, <code>%{hostname}</code>, <code>%{ip}</code>)</label><input type="text" id="osdtext" maxlength="64">
+    <label for="osdpos">Position</label><select id="osdpos" autocomplete="off"><option value="top-left">top left</option><option value="top-right">top right</option><option value="bottom-left">bottom left</option><option value="bottom-right">bottom right</option></select>
+    <label for="osdsize">Size</label><select id="osdsize" autocomplete="off"><option value="small">small</option><option value="normal">normal</option><option value="large">large</option></select>
+  </section>
+  <section class="panel" id="p-rec"><h2>Card and recordings</h2>
+    <p id="sdinfo" class="hint"></p>
+    <label><input type="checkbox" id="rec"> Record video to the card</label>
+    <label><input type="checkbox" id="recaud"> Record sound too (switches the microphone on, also in the live stream)</label>
+    <label for="recmode">When to record</label><select id="recmode" autocomplete="off"><option value="continuous">continuously (DVR style)</option><option value="motion">only on motion</option></select>
+    <div class="row"><div><label for="recsplit">File length</label><select id="recsplit" autocomplete="off"><option value="1">1 min</option><option value="5">5 min</option><option value="10">10 min</option><option value="20">20 min</option><option value="30">30 min</option><option value="60">60 min</option></select></div>
+    <div><label for="recmax">Delete the oldest when the card is</label><select id="recmax" autocomplete="off"><option value="50">50 % full</option><option value="70">70 % full</option><option value="80">80 % full</option><option value="90">90 % full</option><option value="95">95 % full</option></select></div></div>
+    <div id="recsens"><label for="recmd">Motion sensitivity (0-8, higher = more sensitive)</label><input type="number" id="recmd" min="0" max="8">
+    <div class="row"><div><label for="recpre">Keep before the motion (s)</label><input type="number" id="recpre" min="0" max="30"></div><div><label for="recpost">Keep after it stops (s)</label><input type="number" id="recpost" min="0" max="120"></div></div>
+    <label for="recmin">Shortest clip (s)</label><input type="number" id="recmin" min="1" max="60">
+    <p class="hint">The pre-roll costs RAM (seconds times the bitrate). Motion recording is experimental.</p></div>
+    <p class="hint">FAT32 card (exFAT is not supported). The card is mounted when inserted; use Eject before removing it.</p>
+    <div class="bar"><button id="sdeject">Eject card</button><button id="reclist">Refresh file list</button></div>
+    <video id="player" controls preload="metadata" hidden style="width:100%;margin-top:.8rem;background:#000;border-radius:.4rem"></video>
+    <table id="files"></table>
+    <div class="bar" id="pager" hidden><button id="pprev">Newer</button><span class="hint" id="pinfo"></span><button id="pnext">Older</button></div>
+  </section>
+  <section class="panel" id="p-audio"><h2>Audio</h2>
+    <label><input type="checkbox" id="mic"> Microphone (audio track in the video stream)</label>
+    <label for="micvol">Microphone volume (0-100)</label><input type="number" id="micvol" min="0" max="100">
+    <label for="acodec">Audio format in the stream</label>
+    <select id="acodec" autocomplete="off"><option value="alaw">G.711 A-law</option><option value="ulaw">G.711 µ-law</option><option value="pcm">PCM</option><option value="aac">AAC</option><option value="opus">Opus</option></select>
+    <label><input type="checkbox" id="spk"> Speaker (play sound sent to <code>:8080/play_audio</code>)</label>
+    <label><input type="checkbox" id="beeps"> Beeps (start-up and reset confirmation; needs a password to be set)</label>
+    <label><input type="checkbox" id="talk"> Two-way audio (ONVIF/RTSP back-channel, needs the speaker)</label>
+    <label for="spkvol">Speaker volume (0-100)</label><input type="number" id="spkvol" min="0" max="100">
+  </section>
+  <section class="panel" id="p-device"><h2>Device and security</h2>
+    <label for="hostname">Name</label><input type="text" id="hostname" maxlength="32">
+    <label for="timezone">Time zone (POSIX, e.g. <code>CET-1CEST,M3.5.0,M10.5.0/3</code>)</label><input type="text" id="timezone" maxlength="40">
+    <label for="ntp">Time servers (NTP; several separated by commas, tried in order; empty = no synchronisation)</label><input type="text" id="ntp" maxlength="128">
+    <div class="bar"><button id="settime">Set the clock from this computer</button></div>
+    <label for="pw">New password (user <code>root</code>, for this page and the video stream)</label>
+    <input type="password" id="pw" autocomplete="new-password" placeholder="leave empty to keep the current one">
+    <p class="hint" id="pwinfo"></p>
+    <h2 style="margin-top:1.2rem">Settings backup</h2>
+    <label><input type="checkbox" id="bksec"> Include passwords and keys (the file is then sensitive)</label>
+    <div class="bar"><button id="bkdl">Download settings</button></div>
+    <label for="bkfile">Restore from a backup file</label>
+    <input type="file" id="bkfile" accept=".json,application/json">
+    <div class="bar"><button class="danger" id="bkgo" disabled>Restore settings</button></div>
+    <p class="hint">A restore replaces all saved settings with the file. Passwords and keys that are blank in the file (a backup without them) keep their current values. Restoring a Wi-Fi network or password can disconnect the camera for a moment.</p>
+  </section>
+  <section class="panel" id="p-sip"><h2>SIP intercom</h2>
+    <p class="hint" id="sipwarn"></p>
+    <label><input type="checkbox" id="sipen"> SIP intercom (call out on a short press of the reset button, accept calls)</label>
+    <label for="sipsrv">Server / PBX (empty with "register" off = no server)</label><input type="text" id="sipsrv" maxlength="64">
+    <div class="row"><div><label for="sipport">Port</label><input type="number" id="sipport" min="1" max="65535"></div><div><label for="sipuri">This camera's SIP address</label><input type="text" id="sipuri" maxlength="96" placeholder="sip:camera@pbx.local"></div></div>
+    <div class="row"><div><label for="sipuser">User name</label><input type="text" id="sipuser" maxlength="64"></div><div><label for="sippw">Password</label><input type="password" id="sippw" autocomplete="new-password" maxlength="64"></div></div>
+    <label><input type="checkbox" id="sipreg"> Register with the server</label>
+    <label for="siptarget">Call target(s), separated by commas (e.g. <code>sip:1001@pbx.local</code> or <code>sip:me@192.168.1.20</code>)</label><input type="text" id="siptarget" maxlength="200">
+    <label for="sippeers">Addresses allowed to call in without a password (IP addresses, comma separated; empty = nobody)</label><input type="text" id="sippeers" maxlength="120" placeholder="192.168.1.20">
+    <p class="hint">An address in this list is trusted: on a LAN a source address can be forged, so use it only on a network you trust. Everyone else must give the camera password (user <code>root</code>).</p>
+    <div class="row"><div><label for="sipring">Ring each target for (s)</label><input type="number" id="sipring" min="5" max="120"></div><div><label for="sipcyc">Rounds before giving up</label><input type="number" id="sipcyc" min="1" max="10"></div></div>
+    <p class="hint">A short press of the reset button dials. Callers other than the server are asked for the password of user <code>root</code> (the camera password). The microphone is on while SIP is enabled, also in the live stream. Needs a camera password; starts after Save.</p>
+  </section>
+  <section class="panel" id="p-fw"><h2>Firmware update</h2>
+    <p class="hint" id="fwcur"></p>
+    <p class="hint" id="fwwarn"></p>
+    <label for="fwfile">Firmware file: the app image (<code>app-….sqsh</code>) or a kernel image (<code>sys-….uImage</code>)</label>
+    <input type="file" id="fwfile">
+    <p class="hint" id="fwinfo"></p>
+    <div class="bar"><button class="danger" id="fwgo" disabled>Upload and flash</button></div>
+    <progress id="fwprog" max="100" value="0" hidden style="width:100%"></progress>
+    <p id="fwmsg"></p>
+    <p class="hint">The camera checks the file, writes it to flash, verifies it and restarts (about a minute; do not power it off). Settings are kept. A wrong <b>kernel</b> image can leave the camera unbootable (recovery needs the serial console), so flash kernels only from a source you trust. Build and verify images as described in BUILDING.md.</p>
+  </section>
+  <section class="panel" id="p-diag"><h2>Diagnostics</h2>
+    <div class="row"><div><label for="dlog">Show</label><select id="dlog" autocomplete="off"><option value="system">System information</option><option value="camera">Camera log (start-up)</option><option value="streamer">Streamer log</option><option value="kernel">Kernel messages</option><option value="wifi">Wi-Fi log</option><option value="update">Firmware update log</option></select></div>
+    <div><label for="dn">Last lines</label><select id="dn" autocomplete="off"><option>100</option><option selected>300</option><option>1000</option></select></div></div>
+    <div class="bar"><button id="drefresh">Refresh</button><a href="/cgi-bin/diag?bundle=1" download><button type="button">Download diagnostics</button></a></div>
+    <textarea id="dtext" readonly rows="22" style="width:100%;margin-top:.6rem;font:12px/1.35 ui-monospace,monospace;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:.4rem;padding:.5rem;white-space:pre"></textarea>
+    <p class="hint">Passwords and keys are removed from this view and from the download, network names are replaced by &lt;network&gt; and MAC addresses are shortened. Still look through the file before posting it anywhere.</p>
+  </section>
+  <section class="panel" id="p-wifi"><h2>Wi-Fi</h2>
+    <label for="wmode">Mode</label>
+    <select id="wmode" autocomplete="off"><option value="station">Join the networks below</option><option value="ap">Access point only (the camera makes its own network; also used when no network is saved)</option></select>
+    <div id="apbox" hidden>
+      <label for="apssid">Access point name (empty = <code>cv206-</code> and 4 digits)</label><input type="text" id="apssid" maxlength="32">
+      <label for="appsk">Access point password (8-63 characters)</label><input type="password" id="appsk" autocomplete="new-password" placeholder="">
+      <label for="apch">Channel</label><select id="apch" autocomplete="off"></select>
+      <p class="hint">In this mode the camera is at <code>192.168.4.1</code> and hands out addresses itself. Default password <code>cv206setup</code>: change it.</p>
+    </div>
+    <h2>Networks to join</h2>
+    <div id="nets"></div>
+    <div class="bar"><button id="addnet">Add network</button><button id="scan">Scan nearby</button></div>
+    <ul class="scan" id="scanlist"></ul>
+    <p class="hint">The camera tries them in the order listed. A password field left empty keeps the stored password.</p>
+  </section>
+
+  <section class="panel" id="p-ip"><h2>IP address</h2>
+    <label for="ipmode">Address</label>
+    <select id="ipmode" autocomplete="off"><option value="dhcp">Automatic (DHCP from the router)</option><option value="static">Fixed address</option></select>
+    <div id="ipbox" hidden>
+      <div class="row"><div><label for="ipaddr">IP address</label><input type="text" id="ipaddr" maxlength="15" placeholder="192.168.1.50" autocomplete="off"></div>
+      <div><label for="ipmask">Netmask</label><input type="text" id="ipmask" maxlength="15" placeholder="255.255.255.0" autocomplete="off"></div></div>
+      <div class="row"><div><label for="ipgw">Gateway (router)</label><input type="text" id="ipgw" maxlength="15" placeholder="192.168.1.1" autocomplete="off"></div>
+      <div><label for="ipdns">DNS servers (up to 2, separated by commas)</label><input type="text" id="ipdns" maxlength="40" placeholder="192.168.1.1" autocomplete="off"></div></div>
+      <p class="hint">The gateway is needed to reach other networks; DNS is needed for names such as the time server or a SIP server. Pick an address outside the range your router hands out. If the address is wrong the camera cannot be reached any more: then hold the reset button for 5 seconds (it clears all settings) or use the UART.</p>
+    </div>
+    <p class="hint">Applies to the Wi-Fi networks above. In access point mode the camera always uses <code>192.168.4.1</code>. Current: <span id="ipnow">–</span></p>
+  </section>
+
+  <section id="actions">
+    <div class="bar"><button class="primary" id="save">Save and apply</button><button id="reboot">Reboot</button><button class="danger" id="reset">Reset settings to defaults</button></div>
+    <div class="bar" id="fmtbar" hidden><button id="fmt">Prepare settings storage in flash</button><span class="hint">Settings are only kept in memory right now and are lost at every restart. This button formats the camera's old, unused Ezviz log partition (640 KB of flash) so that settings can be saved there.</span></div>
+    <div id="msg"></div>
+    <p class="hint" id="store"></p>
+  </section>
+</main>
+</div>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+let cfg = null, nets = [];
+
+function msg(text, ok) { const m = $('msg'); m.textContent = text; m.className = ok === undefined ? '' : (ok ? 'ok-t' : 'bad-t'); }
+async function api(path, opt) { const r = await fetch(path, opt); if (!r.ok) throw new Error(r.status + ' ' + r.statusText); return r.json(); }
+
+function renderNets() {
+  const box = $('nets'); box.innerHTML = '';
+  nets.forEach((n, i) => {
+    const row = document.createElement('div'); row.className = 'net';
+    const s = document.createElement('input'); s.type = 'text'; s.placeholder = 'Network name (SSID)'; s.value = n.ssid; s.maxLength = 32; s.oninput = () => n.ssid = s.value;
+    const p = document.createElement('input'); p.type = 'password'; p.autocomplete = 'new-password'; p.value = n.psk || '';
+    p.placeholder = n.psk_set ? '(password stored)' : 'Password (empty = open network)'; p.oninput = () => { n.psk = p.value; };
+    const d = document.createElement('button'); d.textContent = 'Remove'; d.onclick = () => { nets.splice(i, 1); renderNets(); };
+    row.append(s, p, d); box.append(row);
+  });
+  if (!nets.length) box.innerHTML = '<p class="hint">No network configured: the camera has no network connection.</p>';
+}
+
+function fill(c) {
+  $('nmode').value = c.night.mode; $('nlight').value = c.night.ir_light; $('ngain').value = c.night.gain; $('ngray').checked = !!c.night.gray_at_night; $('nowbar').hidden = c.night.mode === 'auto';
+  $('size').value = c.stream.size; $('fps').value = c.stream.fps; $('bitrate').value = c.stream.bitrate;
+  $('mirror').checked = !!c.image.mirror; $('flip').checked = !!c.image.flip;
+  const sp = c.sip || {}; $('sipen').checked = !!sp.enabled; $('sipsrv').value = sp.server || ''; $('sipport').value = sp.port; $('sipuri').value = sp.uri || ''; $('sipuser').value = sp.username || ''; $('sippw').value = ''; $('sippw').placeholder = sp.password_set ? '(password stored)' : ''; $('sipreg').checked = !!sp.register; $('siptarget').value = sp.target || ''; $('sippeers').value = sp.allowed_peers || ''; $('sipring').value = sp.ring_seconds; $('sipcyc').value = sp.ring_cycles; $('sipwarn').textContent = c.users.root_password_set ? '' : 'SIP only starts once a camera password is set.';
+  const rc = c.recording || {}; $('rec').checked = !!rc.enabled; $('recaud').checked = !!rc.audio; $('recmode').value = rc.mode; $('recsplit').value = rc.split; $('recmax').value = rc.max_usage; $('recmd').value = rc.motion_sensitivity; $('recpre').value = rc.pre_roll; $('recpost').value = rc.post_roll; $('recmin').value = rc.min_clip; $('recsens').hidden = rc.mode !== 'motion';
+  const od = c.osd || {}; $('osd').checked = !!od.enabled; $('osdtext').value = od.text || ''; $('osdpos').value = od.position; $('osdsize').value = od.size;
+  const au = c.audio || {}; $('mic').checked = !!au.mic; $('micvol').value = au.mic_volume; $('acodec').value = au.codec; $('spk').checked = !!au.speaker; $('talk').checked = !!au.talkback; $('beeps').checked = au.beeps !== false; $('spkvol').value = au.speaker_volume;
+  $('hostname').value = c.hostname; $('timezone').value = c.timezone; $('ntp').value = c.ntp_server || '';
+  const nw = c.network || {}; $('ipmode').value = nw.mode || 'dhcp'; $('ipaddr').value = nw.address || ''; $('ipmask').value = nw.netmask || '255.255.255.0'; $('ipgw').value = nw.gateway || ''; $('ipdns').value = nw.dns || ''; $('ipbox').hidden = $('ipmode').value !== 'static';
+  nets = (c.wifi.networks || []).map(n => ({ ssid: n.ssid, psk: '', psk_set: n.psk_set }));
+  $('wmode').value = c.wifi.mode || 'station'; const ap = c.wifi.ap || {};
+  $('apssid').value = ap.ssid || ''; $('appsk').value = ''; $('appsk').placeholder = ap.psk_set ? '(password stored)' : ''; $('apch').value = ap.channel || 6; $('apbox').hidden = $('wmode').value !== 'ap';
+  renderNets();
+  $('nopw').hidden = !!c.users.root_password_set; $('fwwarn').textContent = c.users.root_password_set ? '' : 'Set a camera password first: firmware can only be changed behind a login.'; fwEnable();
+  $('pwinfo').textContent = c.users.root_password_set ? 'A password is set.' : 'No password is set yet: set one now (the video stream stays closed until then).';
+}
+
+function collect() {
+  return {
+    hostname: $('hostname').value.trim(), timezone: $('timezone').value.trim(), ntp_server: $('ntp').value.trim(),
+    stream: { size: $('size').value, fps: +$('fps').value, bitrate: +$('bitrate').value },
+    sip: { enabled: $('sipen').checked, server: $('sipsrv').value.trim(), port: +$('sipport').value, uri: $('sipuri').value.trim(), username: $('sipuser').value.trim(), password: $('sippw').value, register: $('sipreg').checked, target: $('siptarget').value.trim(), allowed_peers: $('sippeers').value.trim(), ring_seconds: +$('sipring').value, ring_cycles: +$('sipcyc').value },
+    recording: { enabled: $('rec').checked, audio: $('recaud').checked, mode: $('recmode').value, split: +$('recsplit').value, max_usage: +$('recmax').value, motion_sensitivity: +$('recmd').value, pre_roll: +$('recpre').value, post_roll: +$('recpost').value, min_clip: +$('recmin').value },
+    osd: { enabled: $('osd').checked, text: $('osdtext').value, position: $('osdpos').value, size: $('osdsize').value },
+    audio: { mic: $('mic').checked, mic_volume: +$('micvol').value, codec: $('acodec').value, speaker: $('spk').checked, talkback: $('talk').checked, beeps: $('beeps').checked, speaker_volume: +$('spkvol').value },
+    image: { mirror: $('mirror').checked, flip: $('flip').checked },
+    night: { mode: $('nmode').value, ir_light: $('nlight').value, gray_at_night: $('ngray').checked, gain: +$('ngain').value },
+    network: { mode: $('ipmode').value, address: $('ipaddr').value.trim(), netmask: $('ipmask').value.trim(), gateway: $('ipgw').value.trim(), dns: $('ipdns').value.trim() },
+    wifi: Object.assign({ mode: $('wmode').value, ap: Object.assign({ ssid: $('apssid').value.trim(), channel: +$('apch').value }, $('appsk').value ? { psk: $('appsk').value } : {}), networks: nets.filter(n => n.ssid.trim() !== '').map(n => ({ ssid: n.ssid.trim(), psk: n.psk || '' })) }),
+    users: { root_password: $('pw').value }
+  };
+}
+
+async function load() {
+  try { cfg = await api('/cgi-bin/config'); fill(cfg); } catch (e) { msg('Cannot load settings: ' + e.message, false); }
+}
+
+async function save() {
+  if ($('ipmode').value === 'static' && (!cfg.network || cfg.network.mode !== 'static' || cfg.network.address !== $('ipaddr').value.trim()) && !confirm('Use the fixed address ' + $('ipaddr').value.trim() + '?\n\nIf it is wrong, the camera cannot be reached any more until you reset it with the reset button.')) return;
+  msg('Saving…');
+  try {
+    const r = await api('/cgi-bin/config', { method: 'POST', body: JSON.stringify(collect()) });
+    if (r.ok) { $('pw').value = ''; msg('Saved. The settings are being applied; Wi-Fi or password changes can interrupt this page for a few seconds.', true); setTimeout(load, 4000); }
+    else msg(r.error || 'Rejected', false);
+  } catch (e) { msg('Request failed: ' + e.message + ' (the camera may have restarted its network; reload in a moment)', false); }
+}
+
+async function act(name, confirmText) {
+  if (confirmText && !confirm(confirmText)) return;
+  try { const r = await api('/cgi-bin/action?do=' + name, { method: 'POST' }); msg(r.ok ? 'Done.' : (r.error || 'Failed'), !!r.ok); if (name === 'reset-settings') setTimeout(load, 4000); }
+  catch (e) { msg('Request failed: ' + e.message, false); }
+}
+
+async function scan() {
+  const ul = $('scanlist'); ul.innerHTML = '<li>Scanning…</li>';
+  try {
+    const list = await api('/cgi-bin/action?do=scan', { method: 'POST' });
+    ul.innerHTML = '';
+    list.sort((a, b) => b.signal - a.signal).forEach(n => {
+      const li = document.createElement('li'); li.textContent = n.ssid + (n.secure ? '' : ' (open)');
+      const sp = document.createElement('span'); sp.className = 'hint'; sp.textContent = n.signal + ' dBm'; li.append(sp);
+      li.onclick = () => { if (!nets.some(x => x.ssid === n.ssid)) nets.push({ ssid: n.ssid, psk: '', psk_set: false }); renderNets(); };
+      ul.append(li);
+    });
+    if (!list.length) ul.innerHTML = '<li>No networks found</li>';
+  } catch (e) { ul.innerHTML = '<li>Scan failed: ' + e.message + '</li>'; }
+}
+
+const ADDR = [['RTSP', 'rtsp://root:PASSWORD@H/stream=0', 'RTSP video (and audio)'], ['Picture', 'http://root:PASSWORD@H:8080/image.jpg', 'JPEG snapshot'], ['MJPEG', 'http://root:PASSWORD@H:8080/mjpeg', 'Motion JPEG stream'], ['ONVIF', 'http://root:PASSWORD@H:8080/onvif/device_service', 'ONVIF device service']];
+function addrs() {
+  const box = $('addr'); if (box.firstChild) return;
+  ADDR.forEach(a => {
+    const url = a[1].replace('@H', '@' + location.hostname);
+    const l = document.createElement('span'); l.textContent = a[0]; l.title = a[2];
+    const i = document.createElement('input'); i.readOnly = true; i.value = url; i.title = a[2]; i.onclick = () => i.select();
+    const b = document.createElement('button'); b.textContent = 'Copy';
+    b.onclick = () => { i.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e) {} if (!ok && navigator.clipboard) navigator.clipboard.writeText(url).then(() => ok = true); b.textContent = 'Copied'; setTimeout(() => b.textContent = 'Copy', 1500); };
+    const r = document.createElement('div'); r.className = 'addr'; r.append(l, i, b); box.append(r);
+  });
+}
+let roff = 0; const RPAGE = 20;
+async function files(off) {
+  if (typeof off === 'number') roff = off;
+  const t = $('files');
+  try {
+    const r = await api('/cgi-bin/rec?list&o=' + roff + '&n=' + RPAGE);
+    if (!r.files.length && roff > 0 && r.total > 0) return files(Math.max(0, r.total - RPAGE));
+    t.innerHTML = r.files.length ? '' : '<tr><td>No recordings.</td></tr>';
+    r.files.forEach(f => { const tr = t.insertRow(), u = '/rec/' + f.name; const a = document.createElement('a'); a.href = u; a.textContent = f.name; a.onclick = e => { e.preventDefault(); const v = $('player'); v.hidden = false; v.src = u; v.play().catch(() => {}); v.scrollIntoView({ block: 'nearest' }); }; tr.insertCell().append(a); tr.insertCell().textContent = (f.size / 1048576).toFixed(1) + ' MB'; const d = document.createElement('a'); d.href = u; d.download = f.name.replace('/', '_'); d.textContent = 'Download'; tr.insertCell().append(d); });
+    $('pager').hidden = r.total <= RPAGE;
+    $('pinfo').textContent = r.files.length ? (roff + 1) + '–' + (roff + r.files.length) + ' of ' + r.total : '';
+    $('pprev').disabled = roff <= 0; $('pnext').disabled = roff + RPAGE >= r.total;
+  } catch (e) { t.innerHTML = '<tr><td>Cannot list: ' + e.message + '</td></tr>'; }
+}
+function sdtext(s) { return !s.sd ? 'No card inserted.' : !s.sd.mounted ? 'A card is inserted but could not be mounted (is it FAT32?).' : 'Card: ' + s.sd.totalMb + ' MB, ' + s.sd.freeMb + ' MB free.'; }
+let fwKind = '', fwFile = null;
+const FWMAX = { app: 4456448, sys: 2883584 };
+function fwEnable() { $('fwgo').disabled = !(fwKind && fwFile && fwFile.size > 100000 && fwFile.size <= FWMAX[fwKind] && cfg && cfg.users.root_password_set); }
+async function fwPick() {
+  fwFile = $('fwfile').files[0] || null; fwKind = '';
+  if (!fwFile) { $('fwinfo').textContent = ''; return fwEnable(); }
+  const b = new Uint8Array(await fwFile.slice(0, 4).arrayBuffer());
+  if (b[0] === 0x68 && b[1] === 0x73 && b[2] === 0x71 && b[3] === 0x73) fwKind = 'app';
+  else if (b[0] === 0x27 && b[1] === 5 && b[2] === 0x19 && b[3] === 0x56) fwKind = 'sys';
+  const mb = (fwFile.size / 1048576).toFixed(2) + ' MB';
+  $('fwinfo').textContent = !fwKind ? 'Not a firmware file (neither a squashfs app image nor a uImage kernel).' : fwFile.size > FWMAX[fwKind] ? 'Too big for the flash slot (' + mb + ').' : (fwKind === 'app' ? 'App image' : 'Kernel image') + ', ' + mb + '.';
+  fwEnable();
+}
+async function fwWait(prevUp) {
+  const m = $('fwmsg'); m.className = ''; let seenDown = false;
+  for (let i = 0; i < 90; i++) {
+    await new Promise(r => setTimeout(r, 3000));
+    try {
+      const s = await api('/cgi-bin/status');
+      if (seenDown || (s.uptime < prevUp)) { m.textContent = 'The camera is back. Last update: ' + (s.lastUpdate || '–') + '. Firmware: ' + s.build; m.className = /FAILED/.test(s.lastUpdate || '') ? 'bad-t' : 'ok-t'; $('fwgo').disabled = false; return; }
+      m.textContent = 'Writing to flash… (the camera restarts)';
+    } catch (e) { seenDown = true; m.textContent = 'The camera is restarting…'; }
+  }
+  m.textContent = 'The camera did not come back within 4.5 minutes: check it (serial console), see INSTALL.md.'; m.className = 'bad-t';
+}
+async function fwGo() {
+  if (!fwKind || !fwFile) return;
+  const kern = fwKind === 'sys';
+  if (!confirm((kern ? 'Flash a KERNEL image? A wrong kernel can leave the camera unbootable.\n\n' : 'Flash the app image?\n\n') + fwFile.name + ' (' + (fwFile.size / 1048576).toFixed(2) + ' MB)\n\nThe camera restarts and must not be powered off for about two minutes.')) return;
+  $('fwgo').disabled = true; $('fwprog').hidden = false; $('fwprog').value = 0; const m = $('fwmsg'); m.className = ''; m.textContent = 'Uploading…';
+  let prevUp = 1e9; try { prevUp = (await api('/cgi-bin/status')).uptime; } catch (e) {}
+  const x = new XMLHttpRequest(); x.open('POST', '/cgi-bin/update?kind=' + fwKind + '&upload=1');
+  x.upload.onprogress = e => { if (e.lengthComputable) $('fwprog').value = Math.round(100 * e.loaded / e.total); };
+  x.onload = () => { let r = {}; try { r = JSON.parse(x.responseText); } catch (e) {} if (r.ok) { m.textContent = 'Uploaded and checked (sha256 ' + String(r.sha256).slice(0, 12) + '…). Flashing…'; fwWait(prevUp); } else { m.textContent = 'Not flashed: ' + (r.error || ('HTTP ' + x.status)); m.className = 'bad-t'; $('fwgo').disabled = false; fwEnable(); } };
+  x.onerror = () => { m.textContent = 'Upload failed (network).'; m.className = 'bad-t'; $('fwgo').disabled = false; };
+  x.send(fwFile);
+}
+async function diag() {
+  $('dtext').value = 'Loading…';
+  try { const r = await fetch('/cgi-bin/diag?log=' + $('dlog').value + '&n=' + $('dn').value); $('dtext').value = r.ok ? await r.text() : 'Error ' + r.status; const e = $('dtext'); e.scrollTop = $('dlog').value === 'system' ? 0 : e.scrollHeight; }
+  catch (e) { $('dtext').value = 'Cannot load: ' + e.message; }
+}
+async function bkPick() {
+  $('bkgo').disabled = true; const f = $('bkfile').files[0]; if (!f) return;
+  try { const o = JSON.parse(await f.text()); if (typeof o !== 'object' || Array.isArray(o)) throw new Error('not a settings object'); $('bkgo').disabled = false; msg('Backup file read: ' + f.name + (o.info && o.info.note ? ' (' + o.info.note + ')' : '') + '. Press "Restore settings" to apply it.', true); }
+  catch (e) { msg('This is not a settings backup: ' + e.message, false); }
+}
+async function bkGo() {
+  const f = $('bkfile').files[0]; if (!f || !confirm('Replace ALL saved settings with the contents of ' + f.name + '?\nThe camera applies them at once.')) return;
+  try { const r = await api('/cgi-bin/config?replace=1', { method: 'POST', body: await f.text() }); if (r.ok) { msg('Settings restored and being applied; this page may be interrupted for a few seconds.', true); $('bkfile').value = ''; $('bkgo').disabled = true; setTimeout(load, 5000); } else msg('Not restored: ' + (r.error || 'rejected'), false); }
+  catch (e) { msg('Request failed: ' + e.message + ' (the camera may have restarted its network; reload in a moment)', false); }
+}
+function fmtUp(s) { const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return (d ? d + ' d ' : '') + h + ' h ' + m + ' min'; }
+
+async function status() {
+  try {
+    const s = await api('/cgi-bin/status');
+    $('title').textContent = s.hostname; const v = /\d+\.\d+\.\d+\S*/.exec(s.build || ''); $('sub').textContent = 'Ezviz CS-CV206' + (v ? ' · firmware ' + v[0] : ''); document.title = s.hostname + ' – Ezviz CS-CV206';
+    $('ipnow').textContent = s.ip ? s.ip + (s.netmask ? ' / ' + s.netmask : '') + (s.gateway ? ', gateway ' + s.gateway : '') + (s.dns ? ', DNS ' + s.dns : '') : '–';
+    $('dot').className = 'dot ' + (s.streamer ? 'ok' : 'bad'); $('up').textContent = 'up ' + fmtUp(s.uptime);
+    const rows = [['Video streamer', s.streamer ? 'running' : 'not running'], ['Address', s.ip ? s.ip + (s.netmask ? ' / ' + s.netmask : '') : '–'], ['Gateway', s.gateway || '–'], ['DNS', s.dns || '–'], ['Clock', (s.time || '–') + (s.timeSynced ? ' (synchronised)' : ' (not synchronised)')], ['Wi-Fi network', s.ssid || '–'],
+      ['Signal', s.signal ? s.signal + ' dBm' : '–'], ['Link speed', s.rate || '–'], ['Free memory', s.memFreeKb ? Math.round(s.memFreeKb / 1024) + ' MB' : '–'],
+      ['Day / night now', s.night ? 'night' : 'day'], ['Kernel', s.kernel], ['Firmware', s.build || '–']];
+    $('stat').innerHTML = rows.map(r => '<tr><td>' + r[0] + '</td><td></td></tr>').join('');
+    [...$('stat').rows].forEach((tr, i) => tr.cells[1].textContent = rows[i][1]);
+    $('store').textContent = s.settingsPersistent ? ''
+      : 'Settings storage is in memory only: changes are lost when the camera restarts (flash settings area not initialised).';
+    $('sdinfo').textContent = sdtext(s); $('fwcur').textContent = 'Running: ' + (s.build || '–') + (s.lastUpdate ? '. Last update: ' + s.lastUpdate : '');
+    $('fmtbar').hidden = !!s.settingsPersistent;
+    if (s.settingsStatus && s.settingsStatus !== 'ok' && s.settingsStatus !== 'no-user-file') $('store').textContent += ' Settings file state: ' + s.settingsStatus + '.';
+  } catch (e) { $('dot').className = 'dot bad'; }
+}
+
+let busy = false, tmr = null, mode = '1';
+function refreshLive() {
+  if (busy) return; busy = true;
+  const im = new Image(); im.onload = () => { $('live').src = im.src; busy = false; }; im.onerror = () => { busy = false; };
+  im.src = '/cgi-bin/snapshot?t=' + Date.now();
+}
+
+$('addnet').onclick = () => { nets.push({ ssid: '', psk: '', psk_set: false }); renderNets(); };
+for (let i = 1; i <= 11; i++) $('apch').add(new Option(i, i));
+$('wmode').onchange = () => { $('apbox').hidden = $('wmode').value !== 'ap'; };
+$('ipmode').onchange = () => { $('ipbox').hidden = $('ipmode').value !== 'static'; };
+$('scan').onclick = scan; $('save').onclick = save;
+$('reboot').onclick = () => act('reboot', 'Reboot the camera now?');
+$('fmt').onclick = () => act('format-settings', 'Format the old Ezviz log partition (640 KB of flash, not used by this firmware) as the place where settings are saved? Its current content is erased.');
+$('reset').onclick = () => act('reset-settings', 'Discard all changed settings and return to the defaults?');
+$('settime').onclick = () => act('set-time&t=' + Math.floor(Date.now() / 1000));
+$('bkdl').onclick = async () => { try { const r = await fetch('/cgi-bin/config?backup=1' + ($('bksec').checked ? '&secrets=1' : '')); if (!r.ok) throw new Error(r.status); const u = URL.createObjectURL(await r.blob()), a = document.createElement('a'); a.href = u; a.download = 'cv206-settings-' + new Date().toISOString().slice(0, 10) + '.json'; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000); } catch (e) { msg('Backup failed: ' + e.message, false); } }; $('bkfile').onchange = bkPick; $('bkgo').onclick = bkGo; $('drefresh').onclick = diag; $('dlog').onchange = diag; $('dn').onchange = diag;
+$('fwfile').onchange = fwPick; $('fwgo').onclick = fwGo;
+$('snap').onclick = refreshLive; $('reclist').onclick = () => files(0); $('pprev').onclick = () => files(Math.max(0, roff - RPAGE)); $('pnext').onclick = () => files(roff + RPAGE); $('sdeject').onclick = () => act('sd-eject', 'Stop recording and unmount the card?');
+$('recmode').onchange = () => { $('recsens').hidden = $('recmode').value !== 'motion'; };
+$('nnight').onclick = () => act('night-on'); $('nday').onclick = () => act('night-off');
+$('nmode').onchange = () => { $('nowbar').hidden = $('nmode').value === 'auto'; };
+function setMode() {
+  mode = $('mode').value; clearInterval(tmr); tmr = null;
+  if (mode === 'live') { live(); }
+  else if (+mode > 0) { refreshLive(); tmr = setInterval(() => { if (!idle()) refreshLive(); }, +mode * 1000); }
+}
+$('mode').onchange = setMode;
+function idle() { return document.hidden || cur !== 'p-live'; }
+let cur = '';
+function panel() {
+  let id = location.hash.slice(1); if (!$(id) || !$(id).classList.contains('panel')) id = 'p-live';
+  cur = id; document.querySelectorAll('.panel').forEach(e => e.classList.toggle('on', e.id === id));
+  document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + id));
+  $('actions').hidden = id === 'p-live' || id === 'p-status'; if (id === 'p-rec') files(0); if (id === 'p-diag') diag(); live();
+}
+function live() { if (mode === 'live') $('live').src = idle() ? '' : '/cgi-bin/mjpeg'; else if (!idle() && +mode >= 0) refreshLive(); }
+window.onhashchange = panel;
+document.addEventListener('visibilitychange', live);
+setInterval(() => { if (!document.hidden) status(); }, 15000);
+addrs(); load(); status(); panel(); setMode();
+</script>
+</body>
+</html>

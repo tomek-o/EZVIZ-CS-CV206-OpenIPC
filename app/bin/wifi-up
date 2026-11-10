@@ -1,0 +1,42 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Join the first reachable network from camera.json (wifi.networks[]) on mlan0 and get an address (DHCP, or the fixed address of network.*). Usage: wifi-up [CONFIG.json]
+CFG=${1:-/app/etc/camera.json}
+dmesg -n 1
+[ -d /sys/class/net/mlan0 ] || { echo 1 > /sys/class/mmc_host/mmc1/rescan; for i in 1 2 3 4 5 6 7 8 9 10; do [ -d /sys/class/net/mlan0 ] && break; sleep 1; done; }
+[ -d /sys/class/net/mlan0 ] || { echo "wifi-up: no mlan0"; exit 2; }
+N=$(jget "$CFG" wifi.networks --len)
+[ "$N" -gt 0 ] || { echo "wifi-up: no networks configured"; exit 3; }
+mkdir -p /var/run/wpa_supplicant /tmp/wpa
+{
+  echo "ctrl_interface=/var/run/wpa_supplicant"
+  echo "update_config=0"
+  i=0
+  while [ $i -lt $N ]; do
+    S=$(jget "$CFG" wifi.networks.$i.ssid); P=$(jget "$CFG" wifi.networks.$i.psk)
+    echo "network={"; echo "  ssid=\"$S\""
+    if [ -n "$P" ]; then echo "  psk=\"$P\""; echo "  key_mgmt=WPA-PSK"; else echo "  key_mgmt=NONE"; fi
+    echo "  priority=$((N - i))"; echo "}"
+    i=$((i + 1))
+  done
+} > /tmp/wpa/wpa.conf
+chmod 600 /tmp/wpa/wpa.conf
+killall udhcpd 2>/dev/null
+ifconfig mlan0 up
+killall wpa_supplicant 2>/dev/null
+wpa_supplicant -B -i mlan0 -D nl80211 -c /tmp/wpa/wpa.conf -f /tmp/wpa/log
+for i in $(seq 1 20); do grep -q "CTRL-EVENT-CONNECTED" /tmp/wpa/log 2>/dev/null && break; sleep 1; done
+grep -q "CTRL-EVENT-CONNECTED" /tmp/wpa/log || { echo "wifi-up: not associated"; exit 4; }
+iwconfig mlan0 power off 2>/dev/null   # power saving made ping times 100-250 ms
+if [ "$(jget "$CFG" network.mode dhcp)" = static ] && [ -n "$(jget "$CFG" network.address)" ] && [ -n "$(jget "$CFG" network.netmask)" ]; then
+  # fixed address (network.* in the settings; checked by jcfg): no DHCP
+  killall udhcpc 2>/dev/null
+  ifconfig mlan0 "$(jget "$CFG" network.address)" netmask "$(jget "$CFG" network.netmask)" up
+  GW=$(jget "$CFG" network.gateway)
+  while route del default 2>/dev/null; do :; done
+  [ -n "$GW" ] && route add default gw "$GW" dev mlan0
+  { for d in $(jget "$CFG" network.dns | tr ',' ' '); do echo "nameserver $d"; done; } > /tmp/resolv.conf
+else
+  udhcpc -i mlan0 -n -q -s /app/usr/share/udhcpc/default.script >/dev/null 2>&1
+fi
+ifconfig mlan0 | grep "inet addr"

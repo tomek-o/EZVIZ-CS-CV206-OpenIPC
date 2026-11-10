@@ -1,0 +1,6 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+A=${APPDIR:-/app}; export PATH=$A/bin:$A/sbin:/bin:/sbin:/usr/bin:/usr/sbin
+PW=$(jget /tmp/camera.json users.root_password "")
+echo "Content-Type: image/jpeg"; echo "Cache-Control: no-store"; echo
+httpget 127.0.0.1 8080 /image.jpg root "$PW"

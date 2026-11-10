@@ -1,0 +1,316 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+dir / 755 0 0
+slink /lib32 lib 777 0 0
+slink /linuxrc init 777 0 0
+dir /utils 755 0 0
+dir /usr 755 0 0
+dir /usr/sbin 755 0 0
+slink /usr/sbin/addgroup ../../bin/busybox 777 0 0
+slink /usr/sbin/adduser ../../bin/busybox 777 0 0
+slink /usr/sbin/arping ../../bin/busybox 777 0 0
+slink /usr/sbin/brctl ../../bin/busybox 777 0 0
+slink /usr/sbin/check_mac extutils 777 0 0
+slink /usr/sbin/chpasswd ../../bin/busybox 777 0 0
+slink /usr/sbin/chroot ../../bin/busybox 777 0 0
+slink /usr/sbin/cli extutils 777 0 0
+slink /usr/sbin/crond ../../bin/busybox 777 0 0
+slink /usr/sbin/delgroup ../../bin/busybox 777 0 0
+slink /usr/sbin/deluser ../../bin/busybox 777 0 0
+slink /usr/sbin/flash_eraseall ../../bin/busybox 777 0 0
+slink /usr/sbin/flash_unlock ../../bin/busybox 777 0 0
+slink /usr/sbin/flashcp ../../bin/busybox 777 0 0
+slink /usr/sbin/fw_setenv fw_printenv 777 0 0
+slink /usr/sbin/get_mac extutils 777 0 0
+slink /usr/sbin/httpd ../../bin/busybox 777 0 0
+slink /usr/sbin/i2cdetect ../../bin/busybox 777 0 0
+slink /usr/sbin/i2cdump ../../bin/busybox 777 0 0
+slink /usr/sbin/i2cget ../../bin/busybox 777 0 0
+slink /usr/sbin/i2cset ../../bin/busybox 777 0 0
+slink /usr/sbin/i2ctransfer ../../bin/busybox 777 0 0
+slink /usr/sbin/ipctool extutils 777 0 0
+slink /usr/sbin/kill_pid_file common 777 0 0
+slink /usr/sbin/nanddump ../../bin/busybox 777 0 0
+slink /usr/sbin/nandwrite ../../bin/busybox 777 0 0
+slink /usr/sbin/netip_hash extutils 777 0 0
+slink /usr/sbin/ntpd ../../bin/busybox 777 0 0
+slink /usr/sbin/partprobe ../../bin/busybox 777 0 0
+slink /usr/sbin/seedrng ../../bin/busybox 777 0 0
+slink /usr/sbin/set_mac extutils 777 0 0
+slink /usr/sbin/sysinfo extutils 777 0 0
+slink /usr/sbin/ubiattach ../../bin/busybox 777 0 0
+slink /usr/sbin/ubidetach ../../bin/busybox 777 0 0
+slink /usr/sbin/ubimkvol ../../bin/busybox 777 0 0
+slink /usr/sbin/ubirename ../../bin/busybox 777 0 0
+slink /usr/sbin/ubirmvol ../../bin/busybox 777 0 0
+slink /usr/sbin/ubirsvol ../../bin/busybox 777 0 0
+slink /usr/sbin/ubiupdatevol ../../bin/busybox 777 0 0
+slink /usr/sbin/udhcpd ../../bin/busybox 777 0 0
+dir /usr/bin 755 0 0
+slink /usr/bin/[ ../../bin/busybox 777 0 0
+slink /usr/bin/[[ ../../bin/busybox 777 0 0
+slink /usr/bin/ascii ../../bin/busybox 777 0 0
+slink /usr/bin/awk ../../bin/busybox 777 0 0
+slink /usr/bin/basename ../../bin/busybox 777 0 0
+slink /usr/bin/bunzip2 ../../bin/busybox 777 0 0
+slink /usr/bin/bzcat ../../bin/busybox 777 0 0
+slink /usr/bin/clear ../../bin/busybox 777 0 0
+slink /usr/bin/cmp ../../bin/busybox 777 0 0
+slink /usr/bin/crc32 ../../bin/busybox 777 0 0
+slink /usr/bin/crontab ../../bin/busybox 777 0 0
+slink /usr/bin/cut ../../bin/busybox 777 0 0
+slink /usr/bin/dbclient ../sbin/dropbear 777 0 0
+slink /usr/bin/diff ../../bin/busybox 777 0 0
+slink /usr/bin/dirname ../../bin/busybox 777 0 0
+slink /usr/bin/dos2unix ../../bin/busybox 777 0 0
+slink /usr/bin/dropbearconvert ../sbin/dropbear 777 0 0
+slink /usr/bin/dropbearkey ../sbin/dropbear 777 0 0
+slink /usr/bin/du ../../bin/busybox 777 0 0
+slink /usr/bin/env ../../bin/busybox 777 0 0
+slink /usr/bin/expr ../../bin/busybox 777 0 0
+slink /usr/bin/fallocate ../../bin/busybox 777 0 0
+slink /usr/bin/find ../../bin/busybox 777 0 0
+slink /usr/bin/flock ../../bin/busybox 777 0 0
+slink /usr/bin/fold ../../bin/busybox 777 0 0
+slink /usr/bin/free ../../bin/busybox 777 0 0
+slink /usr/bin/head ../../bin/busybox 777 0 0
+slink /usr/bin/hexdump ../../bin/busybox 777 0 0
+slink /usr/bin/id ../../bin/busybox 777 0 0
+slink /usr/bin/killall ../../bin/busybox 777 0 0
+slink /usr/bin/last ../../bin/busybox 777 0 0
+slink /usr/bin/ldd ../../lib/libc.so 777 0 0
+slink /usr/bin/less ../../bin/busybox 777 0 0
+slink /usr/bin/logger ../../bin/busybox 777 0 0
+slink /usr/bin/lsof ../../bin/busybox 777 0 0
+slink /usr/bin/lsusb ../../bin/busybox 777 0 0
+slink /usr/bin/lzcat ../../bin/busybox 777 0 0
+slink /usr/bin/lzma ../../bin/busybox 777 0 0
+slink /usr/bin/md5sum ../../bin/busybox 777 0 0
+slink /usr/bin/mesg ../../bin/busybox 777 0 0
+slink /usr/bin/microcom ../../bin/busybox 777 0 0
+slink /usr/bin/mkfifo ../../bin/busybox 777 0 0
+slink /usr/bin/mkpasswd ../../bin/busybox 777 0 0
+slink /usr/bin/nc ../../bin/busybox 777 0 0
+slink /usr/bin/nl ../../bin/busybox 777 0 0
+slink /usr/bin/nohup ../../bin/busybox 777 0 0
+slink /usr/bin/nproc ../../bin/busybox 777 0 0
+slink /usr/bin/nslookup ../../bin/busybox 777 0 0
+slink /usr/bin/od ../../bin/busybox 777 0 0
+slink /usr/bin/passwd ../../bin/busybox 777 0 0
+slink /usr/bin/paste ../../bin/busybox 777 0 0
+slink /usr/bin/patch ../../bin/busybox 777 0 0
+slink /usr/bin/pgrep ../../bin/busybox 777 0 0
+slink /usr/bin/printf ../../bin/busybox 777 0 0
+slink /usr/bin/readlink ../../bin/busybox 777 0 0
+slink /usr/bin/realpath ../../bin/busybox 777 0 0
+slink /usr/bin/reset ../../bin/busybox 777 0 0
+slink /usr/bin/resize ../../bin/busybox 777 0 0
+slink /usr/bin/rx ../../bin/busybox 777 0 0
+slink /usr/bin/scp ../sbin/dropbear 777 0 0
+slink /usr/bin/seq ../../bin/busybox 777 0 0
+slink /usr/bin/setsid ../../bin/busybox 777 0 0
+slink /usr/bin/sha1sum ../../bin/busybox 777 0 0
+slink /usr/bin/sha256sum ../../bin/busybox 777 0 0
+slink /usr/bin/sort ../../bin/busybox 777 0 0
+slink /usr/bin/ssh ../sbin/dropbear 777 0 0
+slink /usr/bin/strings ../../bin/busybox 777 0 0
+slink /usr/bin/svc ../../bin/busybox 777 0 0
+slink /usr/bin/tail ../../bin/busybox 777 0 0
+slink /usr/bin/tee ../../bin/busybox 777 0 0
+slink /usr/bin/telnet ../../bin/busybox 777 0 0
+slink /usr/bin/test ../../bin/busybox 777 0 0
+slink /usr/bin/tftp ../../bin/busybox 777 0 0
+slink /usr/bin/time ../../bin/busybox 777 0 0
+slink /usr/bin/timeout ../../bin/busybox 777 0 0
+slink /usr/bin/top ../../bin/busybox 777 0 0
+slink /usr/bin/tr ../../bin/busybox 777 0 0
+slink /usr/bin/traceroute ../../bin/busybox 777 0 0
+slink /usr/bin/traceroute6 ../../bin/busybox 777 0 0
+slink /usr/bin/tree ../../bin/busybox 777 0 0
+slink /usr/bin/truncate ../../bin/busybox 777 0 0
+slink /usr/bin/ts ../../bin/busybox 777 0 0
+slink /usr/bin/tty ../../bin/busybox 777 0 0
+slink /usr/bin/uniq ../../bin/busybox 777 0 0
+slink /usr/bin/unlink ../../bin/busybox 777 0 0
+slink /usr/bin/unlzma ../../bin/busybox 777 0 0
+slink /usr/bin/unxz ../../bin/busybox 777 0 0
+slink /usr/bin/unzip ../../bin/busybox 777 0 0
+slink /usr/bin/uptime ../../bin/busybox 777 0 0
+slink /usr/bin/w ../../bin/busybox 777 0 0
+slink /usr/bin/wc ../../bin/busybox 777 0 0
+slink /usr/bin/wget ../../bin/busybox 777 0 0
+slink /usr/bin/which ../../bin/busybox 777 0 0
+slink /usr/bin/who ../../bin/busybox 777 0 0
+slink /usr/bin/whoami ../../bin/busybox 777 0 0
+slink /usr/bin/xargs ../../bin/busybox 777 0 0
+slink /usr/bin/xxd ../../bin/busybox 777 0 0
+slink /usr/bin/xz ../../bin/busybox 777 0 0
+slink /usr/bin/xzcat ../../bin/busybox 777 0 0
+slink /usr/bin/yes ../../bin/busybox 777 0 0
+dir /tmp 755 0 0
+dir /sys 755 0 0
+dir /sbin 755 0 0
+slink /sbin/arp ../bin/busybox 777 0 0
+slink /sbin/blkid ../bin/busybox 777 0 0
+slink /sbin/devmem ../bin/busybox 777 0 0
+slink /sbin/fdisk ../bin/busybox 777 0 0
+slink /sbin/fsck ../bin/busybox 777 0 0
+slink /sbin/getty ../bin/busybox 777 0 0
+slink /sbin/halt ../bin/busybox 777 0 0
+slink /sbin/hwclock ../bin/busybox 777 0 0
+slink /sbin/ifconfig ../bin/busybox 777 0 0
+slink /sbin/ifdown ../bin/busybox 777 0 0
+slink /sbin/ifup ../bin/busybox 777 0 0
+slink /sbin/init ../bin/busybox 777 0 0
+slink /sbin/insmod ../bin/busybox 777 0 0
+slink /sbin/ip ../bin/busybox 777 0 0
+slink /sbin/ipaddr ../bin/busybox 777 0 0
+slink /sbin/iplink ../bin/busybox 777 0 0
+slink /sbin/ipneigh ../bin/busybox 777 0 0
+slink /sbin/iproute ../bin/busybox 777 0 0
+slink /sbin/iprule ../bin/busybox 777 0 0
+slink /sbin/iptunnel ../bin/busybox 777 0 0
+slink /sbin/iwgetid iwconfig 777 0 0
+slink /sbin/iwpriv iwconfig 777 0 0
+slink /sbin/iwspy iwconfig 777 0 0
+slink /sbin/klogd ../bin/busybox 777 0 0
+slink /sbin/logread ../bin/busybox 777 0 0
+slink /sbin/losetup ../bin/busybox 777 0 0
+slink /sbin/lsmod ../bin/busybox 777 0 0
+slink /sbin/mdev ../bin/busybox 777 0 0
+slink /sbin/mkfs.vfat ../bin/busybox 777 0 0
+slink /sbin/modprobe ../bin/busybox 777 0 0
+slink /sbin/pivot_root ../bin/busybox 777 0 0
+slink /sbin/poweroff ../bin/busybox 777 0 0
+slink /sbin/reboot ../bin/busybox 777 0 0
+slink /sbin/rmmod ../bin/busybox 777 0 0
+slink /sbin/route ../bin/busybox 777 0 0
+slink /sbin/runlevel ../bin/busybox 777 0 0
+slink /sbin/start-stop-daemon ../bin/busybox 777 0 0
+slink /sbin/sysctl ../bin/busybox 777 0 0
+slink /sbin/syslogd ../bin/busybox 777 0 0
+slink /sbin/tunctl ../bin/busybox 777 0 0
+slink /sbin/uevent ../bin/busybox 777 0 0
+slink /sbin/vconfig ../bin/busybox 777 0 0
+slink /sbin/watchdog ../bin/busybox 777 0 0
+dir /run 755 0 0
+dir /root 755 0 0
+slink /root/.ssh /etc/dropbear 777 0 0
+dir /rom 755 0 0
+dir /ram 755 0 0
+dir /proc 755 0 0
+dir /overlay 755 0 0
+dir /opt 755 0 0
+dir /mnt 755 0 0
+dir /media 755 0 0
+dir /lib 755 0 0
+slink /lib/ld-musl-arm.so.1 libc.so 777 0 0
+slink /lib/ld-uClibc.so.0 libc.so 777 0 0
+file /lib/libc.so @INITRAMFS@/min-files/libc.so 755 0 0
+file /lib/libgcc_s.so.1 @INITRAMFS@/min-files/libgcc_s.so.1 755 0 0
+dir /etc 755 0 0
+slink /etc/mtab ../proc/self/mounts 777 0 0
+slink /etc/os-release ../usr/lib/os-release 777 0 0
+slink /etc/resolv.conf /tmp/resolv.conf 777 0 0
+dir /etc/wireless 755 0 0
+dir /etc/ssl 755 0 0
+dir /etc/ssl/certs 755 0 0
+dir /etc/sensors 755 0 0
+slink /etc/sensors/dvp_jxh65_960p.ini jxh65_i2c_dvp_960p.ini 777 0 0
+dir /etc/sensors/iq 755 0 0
+slink /etc/sensors/iq/default.ini ar0130.ini 777 0 0
+dir /etc/profile.d 755 0 0
+dir /etc/network 755 0 0
+dir /etc/network/interfaces.d 755 0 0
+dir /etc/network/if-up.d 755 0 0
+dir /etc/network/if-pre-up.d 755 0 0
+dir /etc/network/if-post-down.d 755 0 0
+dir /etc/network/if-down.d 755 0 0
+dir /etc/mediatek 755 0 0
+dir /etc/init.d 755 0 0
+dir /etc/dropbear 755 0 0
+dir /etc/default 755 0 0
+dir /etc/crontabs 755 0 0
+dir /dev 755 0 0
+slink /dev/fd ../proc/self/fd 777 0 0
+slink /dev/log ../tmp/log 777 0 0
+slink /dev/stderr ../proc/self/fd/2 777 0 0
+slink /dev/stdin ../proc/self/fd/0 777 0 0
+slink /dev/stdout ../proc/self/fd/1 777 0 0
+dir /dev/shm 755 0 0
+dir /dev/pts 755 0 0
+dir /bin 755 0 0
+slink /bin/arch busybox 777 0 0
+slink /bin/ash busybox 777 0 0
+slink /bin/base64 busybox 777 0 0
+file /bin/busybox @INITRAMFS@/min-files/busybox 755 0 0
+slink /bin/cat busybox 777 0 0
+slink /bin/chgrp busybox 777 0 0
+slink /bin/chmod busybox 777 0 0
+slink /bin/chown busybox 777 0 0
+slink /bin/cp busybox 777 0 0
+slink /bin/date busybox 777 0 0
+slink /bin/dd busybox 777 0 0
+slink /bin/df busybox 777 0 0
+slink /bin/dmesg busybox 777 0 0
+slink /bin/echo busybox 777 0 0
+slink /bin/egrep busybox 777 0 0
+slink /bin/false busybox 777 0 0
+slink /bin/fgrep busybox 777 0 0
+slink /bin/getopt busybox 777 0 0
+slink /bin/grep busybox 777 0 0
+slink /bin/gunzip busybox 777 0 0
+slink /bin/gzip busybox 777 0 0
+slink /bin/hostname busybox 777 0 0
+slink /bin/kill busybox 777 0 0
+slink /bin/link busybox 777 0 0
+slink /bin/ln busybox 777 0 0
+slink /bin/login busybox 777 0 0
+slink /bin/ls busybox 777 0 0
+slink /bin/mkdir busybox 777 0 0
+slink /bin/mknod busybox 777 0 0
+slink /bin/mktemp busybox 777 0 0
+slink /bin/more busybox 777 0 0
+slink /bin/mount busybox 777 0 0
+slink /bin/mountpoint busybox 777 0 0
+slink /bin/mt busybox 777 0 0
+slink /bin/mv busybox 777 0 0
+slink /bin/netstat busybox 777 0 0
+slink /bin/nice busybox 777 0 0
+slink /bin/pidof busybox 777 0 0
+slink /bin/ping busybox 777 0 0
+slink /bin/ping6 busybox 777 0 0
+slink /bin/printenv busybox 777 0 0
+slink /bin/ps busybox 777 0 0
+slink /bin/pwd busybox 777 0 0
+slink /bin/rm busybox 777 0 0
+slink /bin/rmdir busybox 777 0 0
+slink /bin/run-parts busybox 777 0 0
+slink /bin/sed busybox 777 0 0
+slink /bin/sh busybox 777 0 0
+slink /bin/sleep busybox 777 0 0
+slink /bin/stat busybox 777 0 0
+slink /bin/stty busybox 777 0 0
+slink /bin/sync busybox 777 0 0
+slink /bin/tar busybox 777 0 0
+slink /bin/touch busybox 777 0 0
+slink /bin/true busybox 777 0 0
+slink /bin/umount busybox 777 0 0
+slink /bin/uname busybox 777 0 0
+slink /bin/usleep busybox 777 0 0
+slink /bin/vi busybox 777 0 0
+slink /bin/watch busybox 777 0 0
+slink /bin/zcat busybox 777 0 0
+nod /dev/console 600 0 0 c 5 1
+nod /dev/null 666 0 0 c 1 3
+dir /lib/firmware 755 0 0
+dir /lib/firmware/mrvl 755 0 0
+file /lib/firmware/mrvl/sd8801_uapsta.bin @INITRAMFS@/min-files/fw/sd8801_uapsta.bin 644 0 0
+slink /sbin/iwlist iwconfig 777 0 0
+dir /usr/share 755 0 0
+dir /var 755 0 0
+dir /var/run 755 0 0
+dir /usr/lib 755 0 0
+file /init @INITRAMFS@/min-files/init-final 755 0 0
+file /etc/ld-musl-arm.path @INITRAMFS@/min-files/ld-musl-arm.path 644 0 0
+dir /data 755 0 0
+slink /sbin/udhcpc ../bin/busybox 777 0 0

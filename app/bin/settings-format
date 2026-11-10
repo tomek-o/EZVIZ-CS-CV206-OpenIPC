@@ -1,0 +1,6 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Initialise the flash settings area (stock `log` partition, mtd8) as JFFS2. ERASES that partition. Usage: settings-format --yes
+[ "$1" = "--yes" ] || { echo "usage: settings-format --yes   (erases the 640 KB stock log partition, mtd8)"; exit 1; }
+umount /data 2>/dev/null
+flash_eraseall -j /dev/mtd8 && mount -t jffs2 /dev/mtdblock8 /data && touch /tmp/data.persistent && echo "settings storage ready"

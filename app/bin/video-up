@@ -1,0 +1,38 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# cv206: load the HiSilicon media modules for the JXF22 (MIPI) with the stock values.
+# usage: video-up      (uses mem=NNM from the kernel command line; the rest is media memory)
+M=/app/lib/modules/4.9.37/hisilicon
+cd $M || exit 1
+OS=$(awk 'BEGIN{RS=" "} /^mem=[0-9]+M/{gsub(/^mem=|M.*$/,""); print; exit}' /proc/cmdline)
+OS=${OS:-36}; TOTAL=64
+MMZ_START=$(printf '0x%x00000' $((0x800 + OS))); MMZ_SIZE=$((TOTAL - OS))M
+echo "media memory: start $MMZ_START size $MMZ_SIZE (OS $OS M of $TOTAL M)"
+devmem 0x200f0040 32 2   # I2C0_SCL
+devmem 0x200f0044 32 2   # I2C0_SDA
+insmod sys_config.ko vi_vpss_online=0 sensor=jxf22 pin_mux_select=3 || exit 1
+# pin_mux_select=3 (invalid on purpose) skips net_rmii_mode(), which would clobber the Wi-Fi SDIO pads
+insmod mmz.ko mmz=anonymous,0,$MMZ_START,$MMZ_SIZE anony=1 || exit 1
+insmod hi_media.ko
+insmod hi3518e_base.ko
+insmod hi3518e_sys.ko vi_vpss_online=0 sensor=jxf22 mem_total=$TOTAL || exit 1
+insmod hi3518e_tde.ko
+insmod hi3518e_region.ko
+insmod hi3518e_vgs.ko
+insmod open_openipc_frame_ts.ko
+insmod hi3518e_isp.ko update_pos=0 proc_param=1
+insmod hi3518e_viu.ko detect_err_frame=10
+insmod hi3518e_vpss.ko rfr_frame_comp=1
+insmod hi3518e_rc.ko
+insmod hi3518e_venc.ko
+insmod hi3518e_chnl.ko ChnlLowPower=1
+insmod hi3518e_h264e.ko H264eMiniBufMode=1
+insmod hi3518e_jpege.ko
+insmod hi3518e_ive.ko save_power=0
+insmod sensor_i2c.ko
+insmod pwm.ko
+devmem 0x2003002c 32 0xc4001   # sensor clock 24 MHz and unreset, as in stock
+insmod hi_mipi.ko
+for m in acodec hi3518e_aio hi3518e_ai hi3518e_ao hi3518e_aenc hi3518e_adec; do insmod $m.ko; done   # internal codec (microphone, speaker)
+acodecctl fs 8000 mixer ind >/dev/null   # microphone input: the "ind" mixer position delivers the signal (the default "in" gives a constant value)
+echo "video modules loaded"

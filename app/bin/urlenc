@@ -1,0 +1,7 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# percent-encode stdin (printable ASCII passwords for URLs)
+awk 'BEGIN { chars = " !\"#$%&'"'"'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~" }
+{ s = ""; for (i = 1; i <= length($0); i++) { c = substr($0, i, 1);
+    if (c ~ /[A-Za-z0-9._~-]/) s = s c; else { p = index(chars, c); s = s (p ? sprintf("%%%02X", p + 31) : "") } }
+  print s }'

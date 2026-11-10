@@ -1,0 +1,21 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# GET ?list&o=OFFSET&n=COUNT -> JSON page of the recordings (newest first), with the total count. The files themselves are served by httpd under /rec/ (byte ranges, see rc and users-setup).
+A=${APPDIR:-/app}; export PATH=$A/bin:$A/sbin:/bin:/sbin:/usr/bin:/usr/sbin
+M=/mnt/sd
+case "$QUERY_STRING" in
+  list*)
+    O=0; N=20                                               # ?list&o=OFFSET&n=COUNT (newest first)
+    case "$QUERY_STRING" in *o=[0-9]*) O=${QUERY_STRING#*o=}; O=${O%%&*};; esac
+    case "$QUERY_STRING" in *n=[0-9]*) N=${QUERY_STRING#*n=}; N=${N%%&*};; esac
+    case "$O$N" in *[!0-9]*|"") O=0; N=20;; esac
+    [ "$N" -gt 100 ] && N=100
+    echo "Content-Type: application/json"; echo "Cache-Control: no-store"; echo
+    L=/tmp/rec.list
+    if grep -q " $M vfat" /proc/mounts; then find $M -type f -name '*.mp4' 2>/dev/null | sort -r > $L; else : > $L; fi
+    printf '{"total":%s,"offset":%s,"files":[' "$(wc -l < $L)" "$O"; S=
+    sed -n "$((O + 1)),$((O + N))p" $L | while read -r f; do
+      printf '%s{"name":"%s","size":%s}' "$S" "${f#$M/}" "$(stat -c %s "$f")"; S=,
+    done
+    printf ']}\n';;
+esac

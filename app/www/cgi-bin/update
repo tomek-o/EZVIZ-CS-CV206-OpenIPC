@@ -1,0 +1,47 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Firmware update, two ways (POST, behind the page login, and only once a camera password is set):
+#   ?kind=app|sys&upload=1[&dry=1]                     the image is the request body (the page's "Firmware update")
+#   ?kind=app|sys&url=http://HOST:PORT/FILE&sha256=HEX[&dry=1]   developer way: the camera downloads it (tools/wupdate.sh)
+# The image is kept in RAM, its size/type are checked (app: mounts and holds /etc/rc and the web page; sys: uImage header and length),
+# then /tmp/fw-apply.sh runs detached (flashes, verifies by read-back, reboots). dry=1 stops after the checks.
+A=${APPDIR:-/app}; export PATH=$A/bin:$A/sbin:/bin:/sbin:/usr/bin:/usr/sbin
+echo "Content-Type: application/json"; echo "Cache-Control: no-store"; echo
+fail() { echo "{\"ok\":false,\"error\":\"$1\"}"; rm -f /tmp/fw.new; exit 0; }
+[ "$REQUEST_METHOD" = "POST" ] || fail "POST only"
+q() { echo "$QUERY_STRING" | tr '&' '\n' | sed -n "s/^$1=//p" | head -1; }
+KIND=$(q kind); URL=$(q url); SHA=$(q sha256); DRY=$(q dry); UP=$(q upload)
+[ -n "$(jget /tmp/camera.json users.root_password "")" ] || fail "set a camera password first (firmware can only be changed behind a login)"
+case "$KIND" in app) MTD=5; MAX=4456448;; sys) MTD=3; MAX=2883584;; *) fail "kind must be app or sys";; esac
+rm -f /tmp/fw.new
+if [ "$UP" = "1" ]; then
+    case "$CONTENT_LENGTH" in ''|*[!0-9]*) fail "no upload";; esac
+    [ "$CONTENT_LENGTH" -gt 100000 ] && [ "$CONTENT_LENGTH" -le "$MAX" ] || fail "file size $CONTENT_LENGTH is not plausible for $KIND (max $MAX)"
+    FREE=$(sed -n 's/^MemAvailable: *\([0-9]*\) kB/\1/p' /proc/meminfo)
+    [ $((FREE * 1024)) -gt $((CONTENT_LENGTH + 3000000)) ] || fail "not enough free memory for this upload"
+    head -c "$CONTENT_LENGTH" > /tmp/fw.new
+    [ "$(wc -c < /tmp/fw.new)" = "$CONTENT_LENGTH" ] || fail "upload incomplete"
+    SHA=$(sha256sum /tmp/fw.new | cut -d' ' -f1)
+else
+    case "$URL" in http://*) ;; *) fail "url must be http://";; esac
+    echo "$SHA" | grep -qE '^[0-9a-f]{64}$' || fail "sha256 must be 64 hex digits"
+    wget -q -T 30 -O /tmp/fw.new "$URL" || fail "download failed"
+fi
+SIZE=$(wc -c < /tmp/fw.new)
+[ "$SIZE" -gt 100000 ] && [ "$SIZE" -le "$MAX" ] || fail "image size $SIZE is not plausible for $KIND (max $MAX)"
+[ "$(sha256sum /tmp/fw.new | cut -d' ' -f1)" = "$SHA" ] || fail "sha256 mismatch (transfer corrupted?)"
+if [ "$KIND" = "app" ]; then
+    mkdir -p /tmp/fwchk; umount /tmp/fwchk 2>/dev/null
+    mount -t squashfs -o ro,loop /tmp/fw.new /tmp/fwchk 2>/dev/null || fail "not a mountable squashfs"
+    OKX=0; [ -x /tmp/fwchk/etc/rc ] && [ -f /tmp/fwchk/www/index.html ] && OKX=1
+    umount /tmp/fwchk
+    [ $OKX = 1 ] || fail "image has no /etc/rc or web page: wrong file?"
+else
+    [ "$(od -An -tx1 -N4 /tmp/fw.new | tr -d ' ')" = "27051956" ] || fail "not a uImage (bad magic)"
+    DS=$(od -An -tu1 -j12 -N4 /tmp/fw.new | awk '{print $1*16777216 + $2*65536 + $3*256 + $4}')     # data size in the header (big endian)
+    [ "$((DS + 64))" -le "$SIZE" ] && [ "$((DS + 64))" -gt $((SIZE - 4096)) ] || fail "uImage header length does not match the file: damaged or not a kernel image"
+fi
+if [ "$DRY" = "1" ]; then rm -f /tmp/fw.new; echo "{\"ok\":true,\"dry\":true,\"size\":$SIZE,\"sha256\":\"$SHA\"}"; exit 0; fi
+cp $A/bin/fw-apply /tmp/fw-apply.sh
+echo "{\"ok\":true,\"size\":$SIZE,\"sha256\":\"$SHA\",\"note\":\"flashing $KIND, the camera reboots\"}"
+( trap '' HUP; sh /tmp/fw-apply.sh $KIND $MTD $SHA $SIZE ) >/dev/null 2>&1 &

@@ -1,0 +1,27 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+A=${APPDIR:-/app}; export PATH=$A/bin:$A/sbin:/bin:/sbin:/usr/bin:/usr/sbin
+esc() { sed 's/\\/\\\\/g; s/"/\\"/g'; }
+echo "Content-Type: application/json"; echo "Cache-Control: no-store"; echo
+HN=$(hostname | esc); UP=$(cut -d. -f1 /proc/uptime); KR=$(uname -r)
+IW=$(iwconfig mlan0 2>/dev/null)
+IP=$(ifconfig mlan0 2>/dev/null | sed -n 's/.*inet addr:\([0-9.]*\).*/\1/p')
+MASK=$(ifconfig mlan0 2>/dev/null | sed -n 's/.*Mask:\([0-9.]*\).*/\1/p')
+GWY=$(route -n 2>/dev/null | awk '$1=="0.0.0.0" && $4 ~ /G/ {print $2; exit}')
+DNS=$(sed -n 's/^nameserver *//p' /tmp/resolv.conf 2>/dev/null | tr '\n' ' ' | sed 's/ $//')
+SSID=$(echo "$IW" | sed -n 's/.*ESSID:"\(.*\)".*/\1/p' | esc)
+SIG=$(echo "$IW" | sed -n 's/.*Signal level=\(-*[0-9]*\).*/\1/p')
+RATE=$(echo "$IW" | sed -n 's/.*Bit Rate=\([0-9.]* [A-Za-z/]*\).*/\1/p')
+ps | grep -q "[m]ajestic" && ST=true || ST=false
+FREE=$(sed -n 's/^MemAvailable: *\([0-9]*\) kB/\1/p' /proc/meminfo)
+[ -f /tmp/data.persistent ] && PERS=true || PERS=false
+NS=$(mapi /night/status 2>/dev/null | tr -d "\r\n ")
+[ "$NS" = 1 ] || NS=0
+BUILD=$(cat $A/etc/build.txt 2>/dev/null | esc)
+[ -f /tmp/ntp.ok ] && SY=true || SY=false
+NOW=$(date "+%Y-%m-%d %H:%M:%S")
+if grep -q " /mnt/sd vfat" /proc/mounts; then SDI=$(df -k /mnt/sd | awk 'NR==2{printf "{\"mounted\":true,\"totalMb\":%d,\"freeMb\":%d}", $2/1024, $4/1024}'); elif [ -b /dev/mmcblk0 ]; then SDI='{"mounted":false,"card":true}'; else SDI=null; fi
+LU=$(cat /data/last-update 2>/dev/null | esc)
+CS=$(cat /tmp/cfg.status 2>/dev/null | esc)
+printf '{"hostname":"%s","uptime":%s,"kernel":"%s","ip":"%s","netmask":"%s","gateway":"%s","dns":"%s","ssid":"%s","signal":"%s","rate":"%s","streamer":%s,"memFreeKb":"%s","settingsPersistent":%s,"settingsStatus":"%s","build":"%s","night":%s,"time":"%s","timeSynced":%s,"sd":%s,"lastUpdate":"%s"}\n' \
+  "$HN" "${UP:-0}" "$KR" "$IP" "$MASK" "$GWY" "$DNS" "$SSID" "$SIG" "$RATE" "$ST" "$FREE" "$PERS" "$CS" "$BUILD" "$NS" "$NOW" "$SY" "$SDI" "$LU"

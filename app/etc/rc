@@ -1,0 +1,173 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# cv206 boot: settings -> users -> GPIO -> media modules -> Wi-Fi -> web page -> streamer (with sensor table). Output: /tmp/camera.log
+export PATH=/app/bin:/app/sbin:/app/usr/bin:/bin:/sbin:/usr/bin:/usr/sbin
+exec >>/tmp/camera.log 2>&1
+echo "rc start $(date)"
+mkdir -p /var/www /var/run /data /etc/ssl/certs
+ifconfig lo 127.0.0.1 netmask 255.0.0.0 up            # needed by the web page's snapshot proxy
+
+# settings storage: JFFS2 on the stock `log` partition when it is already usable, otherwise RAM (changes then do not survive a reboot).
+# Initialise it once with `settings-format` (erases that partition).
+if mount -t jffs2 /dev/mtdblock8 /data 2>/dev/null; then touch /tmp/data.persistent; else mount -t tmpfs tmpfs /data; fi
+
+# effective settings = defaults (in the image) overlaid with /data/camera.json; secrets never leave /tmp/camera.json
+jcfg effective /app/etc/camera.json /data/camera.json /tmp/camera.json 2>/tmp/cfg.status || cp /app/etc/camera.json /tmp/camera.json
+CFG=/tmp/camera.json
+j() { jget "$CFG" "$@"; }
+
+hostname "$(j hostname cv206)"
+j timezone UTC0 > /etc/TZ
+users-setup "$CFG"                                    # root password database (RTSP) and /etc/httpd.conf (web page login)
+ln -sf /app/etc/ssl/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
+# sensor/board GPIO: 3 and 15 high (as the stock firmware), GPIO 5 = sensor reset (active low, pulse), GPIO 59 = IR-cut driver enable (kept high; majestic pulses the two coil pins: pin1 = 57, pin2 = 56 (measured: this order makes day = filter in))
+for g in 3 15 59; do echo $g > /sys/class/gpio/export 2>/dev/null; echo out > /sys/class/gpio/gpio$g/direction; echo 1 > /sys/class/gpio/gpio$g/value; done
+echo 5 > /sys/class/gpio/export 2>/dev/null; echo out > /sys/class/gpio/gpio5/direction
+echo 0 > /sys/class/gpio/gpio5/value; sleep 1; echo 1 > /sys/class/gpio/gpio5/value
+
+video-up || echo "video-up FAILED"
+
+# Wi-Fi in the background: retry until associated, then keep an eye on the link (re-reads the settings every time)
+wifi-manage &
+ntp-sync &
+reset-button &
+led-status &
+mkdir -p /mnt/sd; grep -q ' /mnt/sd ' /proc/mounts || mount -t tmpfs -o size=4k,ro tmpfs /mnt/sd   # (/init may already have mounted the card here) read-only guard: nothing can be recorded into RAM while no card is mounted
+sdcard-mount &
+speaker-gate &
+
+# configuration web page on port 80 (CGI scripts in /app/www/cgi-bin); majestic's own web server moves to 8080 and is only used by the snapshot proxy
+# the web root is a RAM directory of links: the page files (read-only image) and, while a password is set, /rec -> the card (users-setup), so BusyBox httpd serves recordings itself with byte ranges (seeking)
+mkdir -p /tmp/www; for f in /app/www/*; do ln -sf $f /tmp/www/; done
+users-setup /tmp/camera.json >/dev/null
+httpd -f -p 80 -h /tmp/www &
+echo $! > /var/run/httpd.pid
+
+# streamer supervisor: generate majestic.yaml from the settings, start, write the sensor table once the driver has initialised, restart if it exits
+while true; do
+  SIZE=$(j stream.size 1920x1080)
+  # SIP intercom: only with a root password (incoming callers are challenged with it); needs the speaker and the microphone (the microphone is then also live in the stream)
+  SIPEN=false; [ "$(j sip.enabled false)" = true ] && [ -n "$(j users.root_password)" ] && SIPEN=true
+  LIP=$(ifconfig mlan0 2>/dev/null | sed -n 's/.*inet addr:\([0-9.]*\).*/\1/p')
+  [ "$(j audio.speaker false)" = true ] || [ "$(j audio.beeps true)" = true ] && OUTEN=true || OUTEN=false
+  [ "$SIPEN" = true ] && OUTEN=true   # the speaker is also needed for the beeps
+  # majestic starts its speaker path only together with its audio subsystem: switch that on only when the microphone, speaker, beeps or talkback want it
+  # (with the microphone off its volume is 0: a silent audio track)
+  AUDEN=false; MICVOL=0
+  [ "$(j audio.mic false)" = true ] && { AUDEN=true; MICVOL=$(j audio.mic_volume 70); }
+  [ "$OUTEN" = true ] || [ "$(j audio.talkback false)" = true ] && AUDEN=true
+  [ "$SIPEN" = true ] && { AUDEN=true; MICVOL=$(j audio.mic_volume 70); }
+  RECAUD=aac  # recordings: explicit AAC (left empty majestic wrote a bogus audio track); the track is silent (microphone volume 0) unless "record sound too" is on
+  [ "$(j recording.enabled false)" = true ] && [ "$(j recording.audio false)" = true ] && { AUDEN=true; MICVOL=$(j audio.mic_volume 70); }
+  REC=false; MD=false     # recording only with a mounted card and the setting on
+  if [ "$(j recording.enabled false)" = true ] && [ ! -e /tmp/sd.ejected ] && grep -q " /mnt/sd vfat rw" /proc/mounts; then REC=true; [ "$(j recording.mode continuous)" = motion ] && MD=true; fi
+  [ -n "$(j users.root_password)" ] && ONVIF=true || ONVIF=false     # no password yet (setup mode): no ONVIF
+  case "$(j osd.position top-left)" in top-right) OANCH=top-right;; bottom-left) OANCH=bottom-left;; bottom-right) OANCH=bottom-right;; *) OANCH=top-left;; esac
+  case "$(j osd.size normal)" in small) OSZ=0.7;; large) OSZ=1.5;; *) OSZ=1.0;; esac
+  NMODE=$(j night.mode auto); NLIGHT=$(j night.ir_light auto)
+  case "$NMODE" in
+    auto) IRCUT=auto; BACK=auto; MON=true; PINS="  irCutPin1: 57
+  irCutPin2: 56
+  backlightPin: 61";;
+    *) IRCUT=manual; BACK=manual; MON=false; PINS="";;      # fixed day/night: pins are driven by ir-set, not by majestic
+  esac
+  [ "$NLIGHT" = never ] && [ "$NMODE" = auto ] && BACK=off
+  cat > /etc/majestic.yaml <<EOF
+system:
+  webPort: 8080
+  telemetry: false          # majestic defaults to anonymous telemetry: this project has no cloud
+  logLevel: info            # default is debug (fills RAM)
+isp:
+  sensorConfig: /app/etc/sensors/jxf22_mipi_1080p.ini
+video0:
+  enabled: true
+  codec: $(j stream.codec h264)
+  size: $SIZE
+  fps: $(j stream.fps 15)
+  bitrate: $(j stream.bitrate 2048)
+jpeg:
+  enabled: true
+  size: $SIZE
+video1:
+  enabled: false
+osd:
+  enabled: $(j osd.enabled false)
+  template: "$(j osd.text '%Y-%m-%d %H:%M:%S')"
+  font: /app/usr/share/fonts/truetype/UbuntuMono-Regular.ttf
+  size: "$OSZ"
+  anchor: $OANCH
+  offsetX: "12"
+  offsetY: "12"
+audio:
+  enabled: $AUDEN
+  volume: $MICVOL
+  srate: 8000
+  codec: $(j audio.codec alaw)
+  outputEnabled: $OUTEN
+  outputVolume: $(j audio.speaker_volume 70)
+  speakerPin: 54
+  speakerPinHoldMs: 50       # amplifier powers down 50 ms after the last sound (speaker-gate mutes the DAC then)
+  jitterBufferMs: 60
+records:
+  enabled: $REC
+  path: /mnt/sd/%F
+  filename: "%H-%M-%S"
+  split: $(j recording.split 10)
+  maxUsage: $(j recording.max_usage 90)
+  mode: $(j recording.mode continuous)
+  audioCodec: "$RECAUD"
+  preRollSec: $(j recording.pre_roll 5)
+  postRollSec: $(j recording.post_roll 10)
+  minClipSec: $(j recording.min_clip 3)
+motionDetect:
+  enabled: $MD
+  sensitivity: $(j recording.motion_sensitivity 3)
+sip:
+  enabled: $SIPEN
+  server: "$(j sip.server)"
+  port: $(j sip.port 5060)
+  username: "$(j sip.username)"
+  password: "$(j sip.password)"
+  localUri: "$(j sip.uri)"
+  callTarget: "$(j sip.target)"
+  localIp: "$LIP"
+  doRegister: $(j sip.register true)
+  buttonPin: 40
+  buttonActiveLow: true
+  ringSeconds: $(j sip.ring_seconds 20)
+  ringCycles: $(j sip.ring_cycles 3)
+  authInbound: true
+  allowedPeers: "$(j sip.allowed_peers)"
+  inboundUser: root
+  inboundPassword: "$(j users.root_password)"
+onvif:
+  enabled: $ONVIF
+  username: root
+  password: "$(j users.root_password)"   # cleartext lives in /etc (RAM) only: lets ONVIF clients use digest login
+rtsp:
+  audioCodec: $(j audio.codec alaw)
+  backchannel: $(j audio.talkback false)
+image:
+  mirror: $(j image.mirror false)
+  flip: $(j image.flip false)
+nightMode:
+  irCut: $IRCUT
+$PINS
+  irCutExercise: false
+  backlight: $BACK
+  colorToGray: $(j night.gray_at_night true)
+  autoNightGain: $(j night.gain 16)
+  lightMonitor: $MON
+EOF
+  /app/usr/bin/majestic > /tmp/maj.log 2>&1 &
+  MP=$!
+  for i in $(seq 1 40); do grep -q "linear mode init success" /tmp/maj.log 2>/dev/null && break; sleep 1; done
+  sleep 2; i2cwr 0 0x80 /app/etc/jxf22_stock_init.txt
+  sleep 3
+  acodecctl fs 8000 mixer ind >/dev/null    # majestic resets the codec's input mixer every time it starts: without this the microphone is silent after any restart
+  [ -f /tmp/started.beep ] || { touch /tmp/started.beep; beep start & }    # start-up beep (once per power-up)
+  case "$NMODE" in day|night) ir-set $NMODE;; esac   # fixed day/night: filter, lamp and picture mode once the streamer is up
+  wait $MP
+  echo "majestic exited, restarting in 3 s"; sleep 3
+done

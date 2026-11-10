@@ -1,0 +1,17 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# ir-set day|night : fixed day/night. Moves the IR-cut filter with one 500 ms coil pulse (GPIO 59 enable + 56 = filter in / 57 = filter out;
+# measured), switches the IR lamp (GPIO 61) and tells majestic the picture mode. Used when night.mode is day or night (auto mode is majestic's own).
+A=${APPDIR:-/app}; export PATH=$A/bin:/bin:/sbin:/usr/bin:/usr/sbin
+S=/sys/class/gpio
+ex() { [ -d $S/gpio$1 ] || { echo $1 > $S/export; echo out > $S/gpio$1/direction; }; }
+for p in 56 57 59 61; do ex $p; done
+case "$1" in
+  night) PIN=57; LAMP=1; API=/night/on;;
+  day)   PIN=56; LAMP=0; API=/night/off;;
+  *) echo "usage: ir-set day|night"; exit 1;;
+esac
+[ "$(jget /tmp/camera.json night.ir_light auto)" = never ] && LAMP=0
+echo 1 > $S/gpio59/value; echo 1 > $S/gpio$PIN/value; sleep 0.5; echo 0 > $S/gpio$PIN/value; echo 0 > $S/gpio59/value
+echo $LAMP > $S/gpio61/value
+mapi $API >/dev/null 2>&1

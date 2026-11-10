@@ -1,0 +1,46 @@
+--- a/arch/arm/boot/dts/hi3518ev20x-demb.dts
++++ b/arch/arm/boot/dts/hi3518ev20x-demb.dts
+@@ -112,6 +112,10 @@
+ 	};
+ };
+ 
++/* CV206: there is no Ethernet PHY on this board (U-Boot: "No ethernet found";
++ * Linux reads phy_id 0x0000ffff). The MAC and MDIO nodes are left enabled on
++ * purpose: the kernel configuration must stay close to OpenIPC's, because the
++ * binary vendor media modules depend on it (see README, FS_POSIX_ACL). */
+ &mdio {
+ 	hisilicon,phy-reset-delays-us = <10000 20000 150000>;
+ 	phy0: ethernet-phy@1 {
+@@ -140,6 +144,32 @@
+ 
+ &mmc1_sd {
+ 	status = "okay";
++	/* CV206: Marvell SD8801 Wi-Fi is on this host, no card-detect line */
++	pinctrl-names = "default";
++	pinctrl-0 = <&sdio1_pmux>;
++	non-removable;
++	cap-sdio-irq;
++};
++
++/* CV206: SDIO1 pins (CLK, D1, D0, D3, CMD, D2) must be in function 4 (OpenIPC
++ * leaves function 1); found by comparing with the stock kernel's registers. */
++&pmux {
++	sdio1_pmux: sdio1_pmux {
++		pinctrl-single,pins = <0x10 0x4 0x1c 0x4 0x20 0x4
++				       0x24 0x4 0x28 0x4 0x34 0x4>;
++	};
++};
++
++/* CV206: GPIO 18 (pin 6) is most likely the Wi-Fi chip enable. With function 1
++ * the pin kept the chip silent; as a GPIO driven high it answers. The hog also
++ * switches the pad to GPIO function. */
++&gpio_chip2 {
++	wifi_en {
++		gpio-hog;
++		gpios = <2 0>;
++		output-high;
++		line-name = "wifi_en";
++	};
+ };
+ 
+ &i2c_bus0 {

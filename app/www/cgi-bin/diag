@@ -1,0 +1,51 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# GET ?log=system|camera|streamer|kernel|wifi|update[&n=LINES] -> plain text; GET ?bundle=1 -> everything as a download.
+# Passwords and keys from the settings are removed (literal match), network names become <network>, MAC addresses lose their last three bytes.
+A=${APPDIR:-/app}; export PATH=$A/bin:$A/sbin:/bin:/sbin:/usr/bin:/usr/sbin
+CFG=/tmp/camera.json; P=/tmp/redact.pairs
+q() { echo "$QUERY_STRING" | tr '&' '\n' | sed -n "s/^$1=//p" | head -1; }
+
+pairs() {   # "text<TAB>replacement" lines
+    for k in users.root_password sip.password wifi.ap.psk; do v=$(jget $CFG $k ""); [ -n "$v" ] && printf '%s\t<hidden>\n' "$v"; done
+    n=$(jget $CFG wifi.networks --len 2>/dev/null); i=0
+    while [ "${n:-0}" -gt "$i" ]; do
+        v=$(jget $CFG wifi.networks.$i.psk ""); [ -n "$v" ] && printf '%s\t<hidden>\n' "$v"
+        v=$(jget $CFG wifi.networks.$i.ssid ""); [ -n "$v" ] && printf '%s\t<network>\n' "$v"
+        i=$((i + 1))
+    done
+    v=$(jget $CFG wifi.ap.ssid ""); [ -n "$v" ] && printf '%s\t<network>\n' "$v"
+}
+redact() {
+    pairs > $P
+    awk -v pairs=$P 'BEGIN { while ((getline l < pairs) > 0) { split(l, a, "\t"); n++; from[n] = a[1]; to[n] = a[2] } }
+        { for (i = 1; i <= n; i++) { s = $0; out = ""; while (from[i] != "" && (p = index(s, from[i])) > 0) { out = out substr(s, 1, p - 1) to[i]; s = substr(s, p + length(from[i])) } $0 = out s } print }' |
+    sed -E 's/\bcv206-[0-9a-f]{4}\b/cv206-xxxx/g; s/([0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}):[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}/\1:xx:xx:xx/g'
+    rm -f $P
+}
+section() {   # name, N lines
+    case "$1" in
+      system)
+        echo "firmware: $(cat $A/etc/build.txt 2>/dev/null)"; echo "kernel: $(uname -a)"; echo "uptime:$(uptime)"; echo "time: $(date) (UTC)"
+        echo; sed -n '1,6p' /proc/meminfo; echo; df -k 2>/dev/null; echo; grep -E "^/dev/(mtdblock|mmcblk)|^tmpfs /(data|mnt)" /proc/mounts
+        echo; echo "settings: $(cat /tmp/cfg.status 2>/dev/null)   last update: $(cat /data/last-update 2>/dev/null)"
+        echo; ifconfig mlan0 2>&1 | sed -n '1,3p'; iwconfig mlan0 2>&1 | sed -n '1,6p'; echo; ps | head -40;;
+      camera)   tail -n "$2" /tmp/camera.log 2>&1;;
+      streamer) tail -n "$2" /tmp/maj.log 2>&1;;
+      kernel)   dmesg 2>&1 | tail -n "$2";;
+      wifi)     tail -n "$2" /tmp/wpa/log 2>&1;;
+      update)   tail -n "$2" /tmp/update.log 2>&1;;
+      *)        echo "unknown log";;
+    esac
+}
+
+if [ "$(q bundle)" = 1 ]; then
+    printf 'Content-Type: text/plain; charset=utf-8\r\nCache-Control: no-store\r\nContent-Disposition: attachment; filename="cv206-diagnostics-%s.txt"\r\n\r\n' "$(date +%Y-%m-%d)"
+    { echo "cv206 diagnostics $(date) - passwords and keys removed, network names replaced, MAC addresses shortened; check before sharing"; echo
+      for s in system camera streamer kernel wifi update; do echo "=================== $s"; section $s 300; echo; done
+      echo "=================== settings (effective, secrets masked)"; jcfg public $CFG; } 2>&1 | redact
+    exit 0
+fi
+L=$(q log); N=$(q n); case "$N" in ''|*[!0-9]*) N=200;; esac; [ "$N" -gt 2000 ] && N=2000
+printf 'Content-Type: text/plain; charset=utf-8\r\nCache-Control: no-store\r\n\r\n'
+section "${L:-system}" "$N" 2>&1 | redact

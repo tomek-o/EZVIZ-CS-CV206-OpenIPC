@@ -1,0 +1,24 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# GET: effective settings without secrets. GET ?backup=1[&secrets=1]: the saved settings as a download (passwords and keys blank unless secrets=1).
+# POST (JSON body): validate + save (jcfg), then apply in the background. POST ?replace=1: restore a backup (it replaces the saved settings; blank passwords keep the current ones).
+A=${APPDIR:-/app}; export PATH=$A/bin:$A/sbin:/bin:/sbin:/usr/bin:/usr/sbin
+D=${DATADIR:-/data}
+case "$QUERY_STRING" in
+  *backup=1*)
+    SEC=; case "$QUERY_STRING" in *secrets=1*) SEC=--secrets;; esac
+    printf 'Content-Type: application/json\r\nCache-Control: no-store\r\nContent-Disposition: attachment; filename="cv206-settings-%s.json"\r\n\r\n' "$(date +%Y-%m-%d)"
+    jcfg backup $D/camera.json $SEC --info "$(cat $A/etc/build.txt 2>/dev/null)"
+    exit 0;;
+esac
+echo "Content-Type: application/json"; echo "Cache-Control: no-store"; echo
+if [ "$REQUEST_METHOD" = "POST" ]; then
+    MODE=; case "$QUERY_STRING" in *replace=1*) MODE=--replace;; esac
+    [ "${CONTENT_LENGTH:-0}" -le 65536 ] || { echo '{"ok":false,"error":"file too large"}'; exit 0; }
+    head -c "${CONTENT_LENGTH:-0}" | jcfg update $A/etc/camera.json $D/camera.json $MODE > /tmp/upd.out 2>&1
+    cat /tmp/upd.out
+    grep -q '"ok":true' /tmp/upd.out && ( apply >/dev/null 2>&1 & )
+else
+    jcfg effective $A/etc/camera.json $D/camera.json /tmp/camera.json 2>/tmp/cfg.status
+    jcfg public /tmp/camera.json
+fi

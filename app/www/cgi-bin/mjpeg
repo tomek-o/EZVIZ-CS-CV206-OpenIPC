@@ -1,0 +1,6 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# live video: pass majestic's MJPEG stream through (runs until the browser disconnects)
+A=${APPDIR:-/app}; export PATH=$A/bin:$A/sbin:/bin:/sbin:/usr/bin:/usr/sbin
+PW=$(jget /tmp/camera.json users.root_password "")
+exec httpget 127.0.0.1 8080 /mjpeg root "$PW" --ct

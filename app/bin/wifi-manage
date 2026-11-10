@@ -1,0 +1,20 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Wi-Fi supervisor (run in the background from rc). Re-reads /tmp/camera.json every round.
+#   wifi.mode "ap"                      : access point only (wifi-ap)
+#   wifi.mode "station", networks saved  : keep trying to join them (wifi-up); never opens an access point by itself
+#   wifi.mode "station", none saved      : setup access point (this is the state after the reset button cleared the settings)
+CFG=/tmp/camera.json
+STATE=none
+running() { ps | grep -q "[w]pa_supplicant -B"; }
+while true; do
+  MODE=$(jget $CFG wifi.mode station); N=$(jget $CFG wifi.networks --len 2>/dev/null); [ -n "$N" ] || N=0
+  if [ "$MODE" = ap ] || [ "$N" -eq 0 ]; then
+    if [ "$STATE" != ap ] || ! running; then wifi-ap $CFG; STATE=ap; fi
+  else
+    [ "$STATE" = ap ] && { killall wpa_supplicant udhcpd 2>/dev/null; ifconfig mlan0 0.0.0.0; }   # leaving access point mode
+    STATE=sta
+    ifconfig mlan0 2>/dev/null | grep -q "inet addr" || wifi-up $CFG
+  fi
+  sleep 10
+done

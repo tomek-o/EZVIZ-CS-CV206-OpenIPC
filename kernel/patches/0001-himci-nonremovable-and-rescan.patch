@@ -1,0 +1,43 @@
+--- a/drivers/mmc/host/himci/himci.c
++++ b/drivers/mmc/host/himci/himci.c
+@@ -154,10 +154,31 @@
+  *1: card off
+  *0: card on
+  ***********************************************/
++/* CV206: let user space request another scan (needed for non-removable SDIO
++ * devices such as the Wi-Fi chip, whose power/reset is toggled by hand):
++ *   echo 1 > /sys/class/mmc_host/mmc1/rescan
++ */
++static ssize_t himci_rescan_store(struct device *dev, struct device_attribute *a,
++				  const char *buf, size_t count)
++{
++	struct mmc_host *mmc = container_of(dev, struct mmc_host, class_dev);
++
++	mmc->rescan_entered = 0;
++	mmc_detect_change(mmc, 0);
++	return count;
++}
++static DEVICE_ATTR(rescan, 0200, NULL, himci_rescan_store);
++
+ static unsigned int himci_sys_card_detect(struct himci_host *host)
+ {
+ 	unsigned int card_status;
+ 
++	/* CV206: a non-removable device (the SDIO Wi-Fi chip on mmc1) has no
++	 * card-detect pin, so the controller always reports "no card" and
++	 * himci_request() would fail every command with -ENODEV. */
++	if (host->mmc && (host->mmc->caps & MMC_CAP_NONREMOVABLE))
++		return 0;	/* 0: card on */
++
+ 	card_status = readl(host->base + MCI_CDETECT);
+ 	card_status &= (HIMCI_CARD0 << host->port);
+ 	if (card_status)
+@@ -1610,6 +1631,8 @@
+ 	}
+ 
+ 	mmc_add_host(mmc);
++	if (device_create_file(&mmc->class_dev, &dev_attr_rescan))
++		pr_err("himci: cannot create rescan attribute\n");
+ 	return 0;
+ out:
+ 	if (host) {

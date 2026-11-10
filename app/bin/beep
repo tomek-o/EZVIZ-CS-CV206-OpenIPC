@@ -1,0 +1,7 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# beep start|reset : play /app/usr/share/sounds/NAME.pcm through majestic (needs audio.beeps, a root password and a running streamer; silent otherwise)
+CFG=/tmp/camera.json
+[ "$(jget $CFG audio.beeps true)" = true ] || exit 0
+PW=$(jget $CFG users.root_password ""); [ -n "$PW" ] || exit 0
+exec httpget 127.0.0.1 8080 /play_audio root "$PW" --post /app/usr/share/sounds/$1.pcm >/dev/null 2>&1

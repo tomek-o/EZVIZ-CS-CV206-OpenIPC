@@ -1,0 +1,79 @@
+{
+  "hostname": "cv206",
+  "timezone": "UTC0",
+  "wifi": {
+    "mode": "station",
+    "networks": [],
+    "ap": {
+      "ssid": "",
+      "psk": "cv206setup",
+      "channel": 6
+    }
+  },
+  "users": {
+    "root_password": ""
+  },
+  "stream": {
+    "size": "1920x1080",
+    "fps": 15,
+    "bitrate": 2048,
+    "codec": "h264"
+  },
+  "image": {
+    "mirror": false,
+    "flip": false
+  },
+  "night": {
+    "mode": "auto",
+    "ir_light": "auto",
+    "gray_at_night": true,
+    "gain": 8
+  },
+  "audio": {
+    "mic": false,
+    "mic_volume": 70,
+    "codec": "alaw",
+    "speaker": false,
+    "speaker_volume": 70,
+    "talkback": false,
+    "beeps": true
+  },
+  "ntp_server": "pool.ntp.org",
+  "network": {
+    "mode": "dhcp",
+    "address": "",
+    "netmask": "255.255.255.0",
+    "gateway": "",
+    "dns": ""
+  },
+  "osd": {
+    "enabled": false,
+    "text": "%Y-%m-%d %H:%M:%S",
+    "position": "top-left",
+    "size": "normal"
+  },
+  "recording": {
+    "enabled": false,
+    "mode": "continuous",
+    "split": 10,
+    "max_usage": 90,
+    "motion_sensitivity": 3,
+    "audio": false,
+    "pre_roll": 5,
+    "post_roll": 10,
+    "min_clip": 3
+  },
+  "sip": {
+    "enabled": false,
+    "server": "",
+    "port": 5060,
+    "username": "",
+    "password": "",
+    "uri": "",
+    "target": "",
+    "register": true,
+    "ring_seconds": 20,
+    "ring_cycles": 3,
+    "allowed_peers": ""
+  }
+}

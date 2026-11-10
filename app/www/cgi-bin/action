@@ -1,0 +1,28 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# POST ?do=restart-streamer | set-time&t=EPOCH | sd-eject | reboot | reset-settings | scan
+A=${APPDIR:-/app}; export PATH=$A/bin:$A/sbin:/bin:/sbin:/usr/bin:/usr/sbin
+D=${DATADIR:-/data}
+echo "Content-Type: application/json"; echo "Cache-Control: no-store"; echo
+case "$QUERY_STRING" in
+  do=restart-streamer) ( sleep 1; killall majestic ) >/dev/null 2>&1 & echo '{"ok":true}' ;;
+  do=reboot)           ( sleep 2; reboot -f ) >/dev/null 2>&1 & echo '{"ok":true}' ;;
+  do=reset-settings)   rm -f $D/camera.json $D/camera.json.bak $D/camera.json.next; ( apply >/dev/null 2>&1 & ); echo '{"ok":true}' ;;
+  do=sd-eject)         touch /tmp/sd.ejected; sync; ( killall majestic; sleep 6; umount /mnt/sd && mount -t tmpfs -o size=4k,ro tmpfs /mnt/sd ) >/dev/null 2>&1 & echo '{"ok":true}' ;;
+  "do=set-time&t="*)
+    T=${QUERY_STRING#*t=}; T=${T%%&*}
+    case "$T" in ''|*[!0-9]*) echo '{"ok":false,"error":"bad time"}';; *) if [ "$T" -gt 1700000000 ] && date -s "@$T" >/dev/null 2>&1; then touch /tmp/ntp.ok; echo '{"ok":true}'; else echo '{"ok":false,"error":"cannot set the time"}'; fi;; esac ;;
+  do=night-on)  ir-set night >/dev/null 2>&1; echo '{"ok":true}' ;;
+  do=night-off) ir-set day >/dev/null 2>&1; echo '{"ok":true}' ;;
+  do=format-settings)
+    if [ -f /tmp/data.persistent ]; then echo '{"ok":false,"error":"settings storage is already in flash"}'; else
+      if settings-format --yes >/tmp/fmt.out 2>&1; then ( apply >/dev/null 2>&1 & ); echo '{"ok":true}'; else echo '{"ok":false,"error":"formatting failed"}'; fi
+    fi ;;
+  do=scan)
+    iwlist mlan0 scan 2>/dev/null | awk '
+      /ESSID:/ { gsub(/.*ESSID:"|"$/, ""); s=$0 }
+      /Signal level=/ { sub(/.*Signal level=/, ""); sub(/ .*/, ""); q=$0 }
+      /Encryption key:/ { e=($0 ~ /on/) ? "true" : "false"; if (s != "") printf "%s{\"ssid\":\"%s\",\"signal\":\"%s\",\"secure\":%s}", (n++ ? "," : "["), s, q, e; s="" }
+      END { if (!n) printf "["; print "]" }' | sed 's/\\/\\\\/g' ;;
+  *) echo '{"ok":false,"error":"unknown action"}' ;;
+esac

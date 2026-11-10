@@ -1,0 +1,42 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Start the camera's own access point on mlan0 (setup / AP-only mode): 192.168.4.1/24 with a DHCP server. Usage: wifi-ap [CONFIG.json]
+CFG=${1:-/tmp/camera.json}
+dmesg -n 1
+[ -d /sys/class/net/mlan0 ] || { echo 1 > /sys/class/mmc_host/mmc1/rescan; for i in 1 2 3 4 5 6 7 8 9 10; do [ -d /sys/class/net/mlan0 ] && break; sleep 1; done; }
+[ -d /sys/class/net/mlan0 ] || { echo "wifi-ap: no mlan0"; exit 2; }
+SSID=$(jget "$CFG" wifi.ap.ssid ""); PSK=$(jget "$CFG" wifi.ap.psk cv206setup); CH=$(jget "$CFG" wifi.ap.channel 6)
+[ -n "$SSID" ] || SSID="cv206-$(cat /sys/class/net/mlan0/address | cut -d: -f5,6 | tr -d :)"
+case "$CH" in 1) F=2412;; 2) F=2417;; 3) F=2422;; 4) F=2427;; 5) F=2432;; 7) F=2442;; 8) F=2447;; 9) F=2452;; 10) F=2457;; 11) F=2462;; *) F=2437;; esac
+mkdir -p /var/run/wpa_supplicant /tmp/wpa
+killall udhcpc udhcpd wpa_supplicant 2>/dev/null; sleep 1
+cat > /tmp/wpa/ap.conf <<EOC
+ctrl_interface=/var/run/wpa_supplicant
+ap_scan=2
+network={
+  ssid="$SSID"
+  mode=2
+  frequency=$F
+  key_mgmt=WPA-PSK
+  proto=RSN
+  pairwise=CCMP
+  psk="$PSK"
+}
+EOC
+chmod 600 /tmp/wpa/ap.conf
+ifconfig mlan0 0.0.0.0 up
+# the kernel entropy pool of this camera stays nearly empty and wpa_supplicant then refuses the first handshake: credit some (see tools/src/addentropy.c)
+addentropy
+wpa_supplicant -B -i mlan0 -D nl80211 -c /tmp/wpa/ap.conf -f /tmp/wpa/log
+ifconfig mlan0 192.168.4.1 netmask 255.255.255.0 up
+cat > /tmp/wpa/udhcpd.conf <<EOC
+start 192.168.4.10
+end 192.168.4.30
+interface mlan0
+lease_file /tmp/wpa/udhcpd.leases
+opt subnet 255.255.255.0
+opt lease 3600
+EOC
+: > /tmp/wpa/udhcpd.leases
+udhcpd /tmp/wpa/udhcpd.conf
+echo "wifi-ap: '$SSID' channel $CH on 192.168.4.1"

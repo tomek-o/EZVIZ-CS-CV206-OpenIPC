@@ -1,0 +1,21 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Re-read the settings and (re)apply what changed: hostname, time zone, users/web password, Wi-Fi, IP address, streamer. Run detached.
+A=${APPDIR:-/app}; export PATH=$A/bin:$A/sbin:/bin:/sbin:/usr/bin:/usr/sbin
+D=${DATADIR:-/data}
+exec >>/tmp/camera.log 2>&1
+echo "apply $(date)"
+sleep 1                                   # let the web server finish answering the request first
+cp /tmp/camera.json /tmp/camera.json.prev 2>/dev/null
+jcfg effective $A/etc/camera.json $D/camera.json /tmp/camera.json 2>/tmp/cfg.status
+CFG=/tmp/camera.json
+hostname "$(jget $CFG hostname cv206)"
+jget $CFG timezone UTC0 > /etc/TZ
+users-setup $CFG                           # /etc/passwd, /etc/shadow, /etc/httpd.conf
+kill -HUP $(cat /var/run/httpd.pid 2>/dev/null) 2>/dev/null
+OLDW=$(jget /tmp/camera.json.prev wifi 2>/dev/null); NEWW=$(jget $CFG wifi)
+if [ "$OLDW" != "$NEWW" ]; then echo "wifi settings changed"; killall wpa_supplicant 2>/dev/null; ifconfig mlan0 0.0.0.0 2>/dev/null; fi
+if [ "$(jget $CFG network 2>/dev/null)" != "$(jget /tmp/camera.json.prev network 2>/dev/null)" ] && [ "$(jget $CFG wifi.mode station)" != ap ] && [ "$OLDW" = "$NEWW" ]; then
+  echo "network settings changed"; killall udhcpc 2>/dev/null; ifconfig mlan0 0.0.0.0 2>/dev/null   # wifi-manage joins again and applies the new address within 10 s
+fi
+killall majestic 2>/dev/null               # the supervisor in rc regenerates majestic.yaml and starts it again
